@@ -18,13 +18,15 @@ var (
 )
 
 func (gh UpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	path := r.URL.Path
-	newPath := path[len(UpdatePath):]
-	pathItems := strings.Split(newPath, "/")
+	path = path[len(UpdatePath):]
+	log.Println(path)
+	pathItems := strings.Split(path, "/")
 	if v, ok := SupportedMetricsType[pathItems[0]]; !ok || !v {
 		log.Println("Unsupported metric type", ok, v)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
 }

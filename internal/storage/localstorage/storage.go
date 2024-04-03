@@ -1,7 +1,7 @@
 package localstorage
 
 import (
-	"github.com/Eqke/metric-collector/pkg/metrics"
+	"github.com/Eqke/metric-collector/pkg/metric"
 	"log"
 	"sync"
 )
@@ -13,15 +13,15 @@ type LocalStorage struct {
 
 type storage struct {
 	// <NameMetric, Metric>
-	GaugeMetrics   map[string]metrics.Gauge
-	CounterMetrics map[string]metrics.Counter
+	GaugeMetrics   map[string]metric.Gauge
+	CounterMetrics map[string]metric.Counter
 }
 
 func newStorage() storage {
-	//share for new metrics
+	//share for new metric
 	return storage{
-		GaugeMetrics:   make(map[string]metrics.Gauge),
-		CounterMetrics: make(map[string]metrics.Counter),
+		GaugeMetrics:   make(map[string]metric.Gauge),
+		CounterMetrics: make(map[string]metric.Counter),
 	}
 }
 
@@ -31,7 +31,7 @@ func New() *LocalStorage {
 	}
 }
 
-func (s *LocalStorage) Gauge(name string, value metrics.Gauge) error {
+func (s *LocalStorage) Gauge(name string, value metric.Gauge) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.storage.GaugeMetrics[name] = value
@@ -39,7 +39,7 @@ func (s *LocalStorage) Gauge(name string, value metrics.Gauge) error {
 	return nil
 }
 
-func (s *LocalStorage) Counter(name string, value metrics.Counter) error {
+func (s *LocalStorage) Counter(name string, value metric.Counter) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.storage.CounterMetrics[name] += value

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
-	"github.com/Eqke/metric-collector/pkg/metrics"
+	"github.com/Eqke/metric-collector/pkg/metric"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,10 +35,8 @@ func (ch CounterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = ch.Storage.Counter(name, metrics.Counter(valueInt)); err != nil {
+	if err = ch.Storage.Counter(name, metric.Counter(valueInt)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	w.WriteHeader(http.StatusOK)
 
 }

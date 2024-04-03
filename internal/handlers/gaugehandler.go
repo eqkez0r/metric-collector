@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
-	"github.com/Eqke/metric-collector/pkg/metrics"
+	"github.com/Eqke/metric-collector/pkg/metric"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,9 +35,8 @@ func (gh GaugeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = gh.Storage.Gauge(name, metrics.Gauge(valueFloat)); err != nil {
+	if err = gh.Storage.Gauge(name, metric.Gauge(valueFloat)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	w.WriteHeader(http.StatusOK)
 }
