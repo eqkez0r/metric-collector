@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 )
 
@@ -22,12 +21,7 @@ type HTTPServer struct {
 }
 
 type Settings struct {
-	Host string
-	Port string
-}
-
-func (s Settings) GetAddress() string {
-	return strings.Join([]string{s.Host, s.Port}, ":")
+	Endpoint string
 }
 
 func New(ctx context.Context, s *Settings) *HTTPServer {
@@ -47,7 +41,7 @@ func New(ctx context.Context, s *Settings) *HTTPServer {
 
 	return &HTTPServer{
 		server: &http.Server{
-			Addr:    s.GetAddress(),
+			Addr:    s.Endpoint,
 			Handler: r,
 		},
 		engine:   r,
@@ -57,7 +51,7 @@ func New(ctx context.Context, s *Settings) *HTTPServer {
 }
 
 func (s HTTPServer) Run() {
-	log.Printf("Server was started.\n Listening on: %s", s.settings.GetAddress())
+	log.Printf("Server was started.\n Listening on: %s", s.settings.Endpoint)
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
 			log.Fatalf("listen and serve: %v", err)

@@ -16,7 +16,7 @@ func GetRootMetricsHandler(storage storage.Storage) gin.HandlerFunc {
 			context.Status(http.StatusInternalServerError)
 			return
 		}
-		log.Println("metrics was sended")
+		log.Println("metrics got")
 		context.IndentedJSON(http.StatusOK, metrics)
 	}
 }

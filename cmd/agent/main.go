@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"github.com/Eqke/metric-collector/internal/agent"
-	"time"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	a := agent.New("localhost:8080", 5*time.Second)
+	parseFlags()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	a := agent.New(ctx, flagAddr, flagPollInterval, flagReportInterval)
 	a.Run()
 }

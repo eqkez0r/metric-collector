@@ -155,4 +155,5 @@ func UpdateMetrics(ms *runtime.MemStats, mp map[TypeMetric]map[MetricName]string
 	mp[TypeGauge][Sys] = strconv.FormatFloat(float64(ms.Sys), 'f', -1, 64)
 	mp[TypeGauge][TotalAlloc] = strconv.FormatFloat(float64(ms.TotalAlloc), 'f', -1, 64)
 	mp[TypeGauge][RandomValue] = strconv.FormatFloat(rand.Float64(), 'f', -1, 64)
+	
 }

@@ -10,10 +10,10 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	parseFlags()
 
 	settings := &httpserver.Settings{
-		Host: "0.0.0.0",
-		Port: "8080",
+		Endpoint: flagAddr,
 	}
 	server := httpserver.New(ctx, settings)
 
