@@ -2,8 +2,8 @@ package agent
 
 import (
 	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/go-resty/resty/v2"
 	"log"
-	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -19,7 +19,7 @@ const (
 
 type Agent struct {
 	addr         string
-	client       http.Client
+	client       *resty.Client
 	pollInterval time.Duration
 	pollCounter  int64
 }
@@ -27,7 +27,7 @@ type Agent struct {
 func New(addr string, pollInterval time.Duration) *Agent {
 	return &Agent{
 		addr:         addr,
-		client:       http.Client{},
+		client:       resty.New(),
 		pollInterval: pollInterval,
 		pollCounter:  0,
 	}
@@ -44,12 +44,17 @@ func (a *Agent) Run() {
 		metric.UpdateMetrics(ms, m)
 		for metricType, metricMap := range m {
 			for metricName, metricValue := range metricMap {
-				url := strings.Join([]string{"http:/", a.addr, "update", metricType.String(), metricName.String(), metricValue}, "/")
-				resp, err := a.client.Post(url, "text/plain", nil)
+				url := a.getPathToMetric(metricType.String(), metricName.String(), metricValue)
+				_, err := a.client.R().
+					SetHeader("Content-Type", "text/plain").
+					Post(url)
 				if err != nil {
 					log.Println(err)
+					continue
 				}
-				resp.Body.Close()
+
+				//resp.Body.Close()
+				//log.Println("response status:", resp.Status)
 			}
 		}
 	}
@@ -57,6 +62,10 @@ func (a *Agent) Run() {
 
 func (a *Agent) Stop() {
 
+}
+
+func (a *Agent) getPathToMetric(metricType, metricName, metricValue string) string {
+	return strings.Join([]string{"http:/", a.addr, "value", metricType, metricName, metricValue}, "/")
 }
 
 func (a *Agent) GetPollCounter() int64 {

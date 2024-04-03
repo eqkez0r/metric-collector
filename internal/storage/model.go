@@ -1,6 +1,12 @@
 package storage
 
+type Metric struct {
+	Name  string
+	Value string
+}
+
 type Storage interface {
-	Gauge(name string, value float64) error
-	Counter(name string, value int64) error
+	SetValue(metricType, name, value string) error
+	GetValue(metricType, name string) (string, error)
+	GetMetrics() ([]Metric, error)
 }

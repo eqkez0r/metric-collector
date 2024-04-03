@@ -4,13 +4,19 @@ import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/handlers"
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
+	"github.com/gin-gonic/gin"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 type HTTPServer struct {
 	server   *http.Server
+	engine   *gin.Engine
 	settings *Settings
 	ctx      context.Context
 }
@@ -25,18 +31,26 @@ func (s Settings) GetAddress() string {
 }
 
 func New(ctx context.Context, s *Settings) *HTTPServer {
-	mux := http.NewServeMux()
-	store := localstorage.New()
 
-	mux.Handle(handlers.UpdatePath, middleware(handlers.UpdateHandler{}))
-	mux.Handle(handlers.GaugePath, middleware(handlers.GaugeHandler{Storage: store}))
-	mux.Handle(handlers.CounterPath, middleware(handlers.CounterHandler{Storage: store}))
+	store := localstorage.New()
+	gin.DisableConsoleColor()
+	f, err := os.Create("gin-metric.log")
+	if err != nil {
+		log.Println(err)
+	}
+	gin.DefaultWriter = io.MultiWriter(f)
+	r := gin.New()
+
+	r.GET("/", handlers.GetRootMetricsHandler(store))
+	r.GET("/value/:type/:name", handlers.GETMetricHandler(store))
+	r.POST("/update/:type/:name/:value", handlers.POSTMetricHandler(store))
 
 	return &HTTPServer{
 		server: &http.Server{
 			Addr:    s.GetAddress(),
-			Handler: mux,
+			Handler: r,
 		},
+		engine:   r,
 		settings: s,
 		ctx:      ctx,
 	}
@@ -45,17 +59,18 @@ func New(ctx context.Context, s *Settings) *HTTPServer {
 func (s HTTPServer) Run() {
 	log.Printf("Server was started.\n Listening on: %s", s.settings.GetAddress())
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.server.ListenAndServe(); err != nil {
 			log.Fatalf("listen and serve: %v", err)
 		}
 	}()
+	signal.NotifyContext(s.ctx, syscall.SIGINT, syscall.SIGTERM)
 	<-s.ctx.Done()
 	s.Shutdown()
 }
 
 func (s HTTPServer) Shutdown() {
 	log.Println("Server was stopped.")
-	err := s.server.Shutdown(s.ctx)
+	err := s.server.Shutdown(context.Background())
 	if err != nil {
 		log.Printf("Server shutdown failed: %v", err)
 	}
