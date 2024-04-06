@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/config"
+	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/go-resty/resty/v2"
 	"log"
@@ -18,6 +19,8 @@ const (
 	randName        = "random"
 	typeGauge       = "gauge"
 	typeCounter     = "counter"
+
+	errPointPostMetrics = "error in agent.postMetrics(): "
 )
 
 type Agent struct {
@@ -60,14 +63,15 @@ func (a *Agent) Run() {
 
 func (a *Agent) postMetrics() {
 	defer a.wg.Done()
-	for range time.Tick(a.reportInterval) {
+	ticker := time.NewTicker(a.reportInterval)
+	for {
 		select {
 		case <-a.ctx.Done():
 			{
 				log.Println("post metrics was stopped")
 				return
 			}
-		default:
+		case <-ticker.C:
 			{
 				a.pollCounter++
 				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
@@ -78,7 +82,7 @@ func (a *Agent) postMetrics() {
 							SetHeader("Content-Type", "text/plain").
 							Post(endPoint)
 						if err != nil {
-							log.Println(err)
+							log.Println(e.WrapError(errPointPostMetrics, err))
 							continue
 						}
 
@@ -92,14 +96,15 @@ func (a *Agent) postMetrics() {
 
 func (a *Agent) pollMetric(ms *runtime.MemStats) {
 	defer a.wg.Done()
-	for range time.Tick(a.pollInterval) {
+	ticker := time.NewTicker(a.pollInterval)
+	for {
 		select {
 		case <-a.ctx.Done():
 			{
 				log.Println("update metrics was stopped")
 				return
 			}
-		default:
+		case <-ticker.C:
 			{
 				// Обертка сделана для того, чтобы можно было корректно сбросить mutex
 				func() {
@@ -109,6 +114,7 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 					metric.UpdateMetrics(ms, a.mp)
 
 				}()
+
 			}
 		}
 	}

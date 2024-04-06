@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"flag"
 	"os"
 )
@@ -10,9 +9,11 @@ type ServerConfig struct {
 	Endpoint string
 }
 
-var (
-	errUnexpectedArguments = errors.New("unexpected arguments")
+const (
+	errPointNewServerConfig = "error in NewServerConfig(): "
+)
 
+var (
 	flagServerAddr string
 )
 

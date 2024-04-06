@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"os"
@@ -12,6 +13,10 @@ type AgentConfig struct {
 	ReportInterval int
 	PollInterval   int
 }
+
+const (
+	errPointNewAgentConfig = "error in NewAgentConfig(): "
+)
 
 var (
 	flagAgentAddr      string
@@ -25,8 +30,7 @@ func NewAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&flagPollInterval, "p", defaultPollInterval, "poll interval in seconds")
 	flag.Parse()
 	if len(flag.Args()) != 0 {
-		log.Println("unexpected arguments: ", flag.Args())
-		os.Exit(1)
+		return nil, errors.New(errPointNewAgentConfig + errUnexpectedArguments.Error())
 	}
 	if v, ok := os.LookupEnv(EnvAddr); ok {
 		log.Println("ADDRESS", v)
@@ -34,7 +38,7 @@ func NewAgentConfig() (*AgentConfig, error) {
 	}
 	if v, ok := os.LookupEnv(EnvReportInterval); ok {
 		if reportInterval, err := strconv.Atoi(v); err != nil {
-			return nil, err
+			return nil, errors.New(errPointNewAgentConfig + errUnexpectedArguments.Error())
 		} else {
 			flagReportInterval = reportInterval
 		}
