@@ -2,31 +2,25 @@ package httpserver
 
 import (
 	"context"
+	"github.com/Eqke/metric-collector/internal/config"
 	"github.com/Eqke/metric-collector/internal/handlers"
-	"github.com/Eqke/metric-collector/internal/storage/localstorage"
+	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 type HTTPServer struct {
 	server   *http.Server
 	engine   *gin.Engine
-	settings *Settings
+	settings *config.ServerConfig
 	ctx      context.Context
 }
 
-type Settings struct {
-	Endpoint string
-}
+func New(ctx context.Context, s *config.ServerConfig, storage stor.Storage) *HTTPServer {
 
-func New(ctx context.Context, s *Settings) *HTTPServer {
-
-	store := localstorage.New()
 	gin.DisableConsoleColor()
 	f, err := os.Create("gin-metric.log")
 	if err != nil {
@@ -35,9 +29,9 @@ func New(ctx context.Context, s *Settings) *HTTPServer {
 	gin.DefaultWriter = io.MultiWriter(f)
 	r := gin.New()
 
-	r.GET("/", handlers.GetRootMetricsHandler(store))
-	r.GET("/value/:type/:name", handlers.GETMetricHandler(store))
-	r.POST("/update/:type/:name/:value", handlers.POSTMetricHandler(store))
+	r.GET("/", handlers.GetRootMetricsHandler(storage))
+	r.GET("/value/:type/:name", handlers.GETMetricHandler(storage))
+	r.POST("/update/:type/:name/:value", handlers.POSTMetricHandler(storage))
 
 	return &HTTPServer{
 		server: &http.Server{
@@ -57,7 +51,6 @@ func (s HTTPServer) Run() {
 			log.Fatalf("listen and serve: %v", err)
 		}
 	}()
-	signal.NotifyContext(s.ctx, syscall.SIGINT, syscall.SIGTERM)
 	<-s.ctx.Done()
 	s.Shutdown()
 }

@@ -6,40 +6,6 @@ import (
 	"strconv"
 )
 
-//type Metric interface {
-//	GetType() TypeMetric
-//	FromString(value string)
-
-var MetricList = []string{
-	"Alloc",
-	"BuckHashSys",
-	"Frees",
-	"GCCPUFraction",
-	"GCSys",
-	"HeapAlloc",
-	"HeapIdle",
-	"HeapInuse",
-	"HeapObjects",
-	"HeapReleased",
-	"HeapSys",
-	"LastGC",
-	"Lookups",
-	"MCacheInuse",
-	"MCacheSys",
-	"MSpanInuse",
-	"MSpanSys",
-	"Mallocs",
-	"NextGC",
-	"NumForcedGC",
-	"NumGC",
-	"OtherSys",
-	"PauseTotalNs",
-	"StackInuse",
-	"StackSys",
-	"Sys",
-	"TotalAlloc",
-}
-
 type MetricName string
 
 func (m MetricName) String() string {
@@ -155,5 +121,5 @@ func UpdateMetrics(ms *runtime.MemStats, mp map[TypeMetric]map[MetricName]string
 	mp[TypeGauge][Sys] = strconv.FormatFloat(float64(ms.Sys), 'f', -1, 64)
 	mp[TypeGauge][TotalAlloc] = strconv.FormatFloat(float64(ms.TotalAlloc), 'f', -1, 64)
 	mp[TypeGauge][RandomValue] = strconv.FormatFloat(rand.Float64(), 'f', -1, 64)
-	
+
 }
