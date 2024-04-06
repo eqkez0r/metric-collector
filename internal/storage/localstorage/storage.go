@@ -19,7 +19,7 @@ var (
 )
 
 type LocalStorage struct {
-	mu      *sync.RWMutex
+	mu      *sync.Mutex
 	storage storage
 }
 
@@ -40,13 +40,13 @@ func newStorage() storage {
 func New() *LocalStorage {
 	return &LocalStorage{
 		storage: newStorage(),
-		mu:      &sync.RWMutex{},
+		mu:      &sync.Mutex{},
 	}
 }
 
 func (s *LocalStorage) SetValue(metricType, name, value string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
@@ -78,8 +78,8 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 
 func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	switch metricType {
 	case metric.TypeCounter.String():
@@ -108,8 +108,8 @@ func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
 }
 
 func (s *LocalStorage) GetMetrics() ([]store.Metric, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	metrics := make([]store.Metric, 0, len(s.storage.CounterMetrics)+len(s.storage.GaugeMetrics))
 	for name := range s.storage.CounterMetrics {
 		m := store.Metric{
@@ -129,17 +129,25 @@ func (s *LocalStorage) GetMetrics() ([]store.Metric, error) {
 }
 
 func (s *LocalStorage) GetGaugeMetrics() map[string]metric.Gauge {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.storage.GaugeMetrics
 }
 
 func (s *LocalStorage) GetGaugeMetric(name string) metric.Gauge {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.storage.GaugeMetrics[name]
 }
 
 func (s *LocalStorage) GetCounterMetrics() map[string]metric.Counter {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.storage.CounterMetrics
 }
 
 func (s *LocalStorage) GetCounterMetric(name string) metric.Counter {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.storage.CounterMetrics[name]
 }

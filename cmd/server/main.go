@@ -13,11 +13,11 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	storage := localstorage.New()
 	settings, err := config.NewServerConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
+	storage := localstorage.New()
 	server := httpserver.New(ctx, settings, storage)
 	server.Run()
 }

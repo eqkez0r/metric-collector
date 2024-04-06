@@ -24,27 +24,21 @@ const (
 )
 
 type Agent struct {
-	addr           string
-	settings       *config.AgentConfig
-	client         *resty.Client
-	reportInterval time.Duration
-	pollInterval   time.Duration
-	pollCounter    int64
-	mp             map[metric.TypeMetric]map[metric.MetricName]string
-	ctx            context.Context
-	wg             sync.WaitGroup
-	mu             *sync.Mutex
+	settings    *config.AgentConfig
+	client      *resty.Client
+	pollCounter int64
+	mp          map[metric.TypeMetric]map[metric.MetricName]string
+	ctx         context.Context
+	wg          sync.WaitGroup
+	mu          *sync.Mutex
 }
 
 func New(ctx context.Context, settings *config.AgentConfig) *Agent {
 	return &Agent{
-		ctx:            ctx,
-		addr:           settings.AgentEndpoint,
-		settings:       settings,
-		client:         resty.New(),
-		pollInterval:   time.Duration(settings.PollInterval) * time.Second,
-		reportInterval: time.Duration(settings.ReportInterval) * time.Second,
-		pollCounter:    0,
+		ctx:         ctx,
+		settings:    settings,
+		client:      resty.New(),
+		pollCounter: 0,
 	}
 }
 
@@ -63,7 +57,7 @@ func (a *Agent) Run() {
 
 func (a *Agent) postMetrics() {
 	defer a.wg.Done()
-	ticker := time.NewTicker(a.reportInterval)
+	ticker := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -85,8 +79,7 @@ func (a *Agent) postMetrics() {
 							log.Println(e.WrapError(errPointPostMetrics, err))
 							continue
 						}
-
-						log.Println(metricName, "was updated. response status code:", resp.StatusCode())
+						log.Printf("%s was updated. response status code: %d", metricName, resp.StatusCode())
 					}
 				}
 			}
@@ -96,7 +89,7 @@ func (a *Agent) postMetrics() {
 
 func (a *Agent) pollMetric(ms *runtime.MemStats) {
 	defer a.wg.Done()
-	ticker := time.NewTicker(a.pollInterval)
+	ticker := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -121,5 +114,5 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 }
 
 func (a *Agent) getPathToMetric(metricType, metricName, metricValue string) string {
-	return strings.Join([]string{"http:/", a.addr, "update", metricType, metricName, metricValue}, "/")
+	return strings.Join([]string{"http:/", a.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
 }

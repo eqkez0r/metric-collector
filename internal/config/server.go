@@ -2,33 +2,29 @@ package config
 
 import (
 	"flag"
-	"os"
+	e "github.com/Eqke/metric-collector/pkg/error"
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type ServerConfig struct {
-	Endpoint string
+	Endpoint string `env:"ADDRESS"`
 }
 
 const (
 	errPointNewServerConfig = "error in NewServerConfig(): "
 )
 
-var (
-	flagServerAddr string
-)
-
 func NewServerConfig() (*ServerConfig, error) {
-	flag.StringVar(&flagServerAddr, "a", defaultAddr, "server endpoint")
+	cfg := &ServerConfig{}
+	flag.StringVar(&cfg.Endpoint, "a", defaultAddr, "server endpoint")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
 		return nil, errUnexpectedArguments
 	}
-	if v, ok := os.LookupEnv(EnvAddr); ok {
-		flagServerAddr = v
+	err := cleanenv.ReadEnv(cfg)
+	if err != nil {
+		return nil, e.WrapError(errPointNewServerConfig, err)
 	}
-
-	return &ServerConfig{
-		Endpoint: flagServerAddr,
-	}, nil
+	return cfg, nil
 }
