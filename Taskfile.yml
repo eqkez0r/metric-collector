@@ -1,0 +1,9 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - powershell New-Item -ItemType Directory -Force -Path ./build
+      - go test -v ./...
+      - go build -o build/agent.exe ./cmd/agent
+      - go build -o build/server.exe ./cmd/server
