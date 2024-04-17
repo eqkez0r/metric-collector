@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"github.com/Eqke/metric-collector/internal/storage/localstorage"
+	ls "github.com/Eqke/metric-collector/internal/storage/localstorage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,13 +51,15 @@ func TestCounterHandler_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			l := zaptest.NewLogger(t).Sugar()
+			localstorage := ls.New(l)
 			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
 			w := httptest.NewRecorder()
 			gin.DisableConsoleColor()
-			localstorage := localstorage.New()
-			engine := gin.New()
-			engine.POST("/update/:type/:name/:value", POSTMetricHandler(localstorage))
+			gin.SetMode(gin.ReleaseMode)
 
+			engine := gin.New()
+			engine.POST("/update/:type/:name/:value", POSTMetricHandler(l, localstorage))
 			engine.ServeHTTP(w, req)
 
 			res := w.Result()

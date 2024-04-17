@@ -16,13 +16,15 @@ func POSTMetricHandler(
 	logger *zap.SugaredLogger,
 	storage storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
+
 		metricType := context.Param("type")
+		metricName := context.Param("name")
 		if metricType != metric.TypeCounter.String() && metricType != metric.TypeGauge.String() {
 			logger.Errorf("%s: unknown metric type %s", errPointPostMetric, metricType)
 			context.Status(http.StatusBadRequest)
 			return
 		}
-		metricName := context.Param("name")
+
 		if metricName == "" {
 			logger.Errorf("%s: empty metric name", errPointPostMetric)
 			context.Status(http.StatusNotFound)

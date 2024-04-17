@@ -24,6 +24,9 @@ func Logger(
 
 		context.Next()
 
+		respData.status = context.Writer.Status()
+		respData.size = lw.Size()
+
 		duration := time.Since(start)
 
 		logger.Infoln(
