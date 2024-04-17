@@ -2,9 +2,8 @@ package handlers
 
 import (
 	"github.com/Eqke/metric-collector/internal/storage"
-	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/gin-gonic/gin"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -12,16 +11,18 @@ const (
 	errPointGetRootMetrics = "error in GET /"
 )
 
-func GetRootMetricsHandler(storage storage.Storage) gin.HandlerFunc {
+func GetRootMetricsHandler(
+	logger *zap.SugaredLogger,
+	storage storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-
+		logger.Infof("metrics was requested")
 		metrics, err := storage.GetMetrics()
 		if err != nil {
-			log.Println(e.WrapError(errPointGetRootMetrics, err))
+			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
 			context.Status(http.StatusInternalServerError)
 			return
 		}
-		log.Println("metrics got")
+		logger.Infof("metrics get success")
 		context.IndentedJSON(http.StatusOK, metrics)
 	}
 }

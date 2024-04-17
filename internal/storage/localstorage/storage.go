@@ -5,7 +5,7 @@ import (
 	store "github.com/Eqke/metric-collector/internal/storage"
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
-	"log"
+	"go.uber.org/zap"
 	"strconv"
 	"sync"
 )
@@ -19,6 +19,7 @@ var (
 )
 
 type LocalStorage struct {
+	logger  *zap.SugaredLogger
 	mu      *sync.Mutex
 	storage storage
 }
@@ -37,10 +38,11 @@ func newStorage() storage {
 	}
 }
 
-func New() *LocalStorage {
+func New(logger *zap.SugaredLogger) *LocalStorage {
 	return &LocalStorage{
 		storage: newStorage(),
 		mu:      &sync.Mutex{},
+		logger:  logger,
 	}
 }
 
@@ -52,7 +54,7 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 		{
 			metricValueInt, err := strconv.Atoi(value)
 			if err != nil {
-				log.Println(errPointSetValue, err)
+				s.logger.Error(errPointSetValue, err)
 				return e.WrapError(errPointSetValue, err)
 			}
 			s.storage.CounterMetrics[name] += metric.Counter(metricValueInt)
@@ -61,18 +63,20 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 		{
 			metricGauge, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				log.Println(errPointSetValue, err)
+				s.logger.Error(errPointSetValue, err)
 				return e.WrapError(errPointSetValue, err)
 			}
 			s.storage.GaugeMetrics[name] = metric.Gauge(metricGauge)
 		}
 	default:
 		{
-			log.Println(errPointSetValue, errIsUnknownType)
+			s.logger.Error(errPointSetValue, errIsUnknownType)
 			return e.WrapError(errPointSetValue, errIsUnknownType)
 
 		}
 	}
+	s.logger.Infof("metric was saved with type: %s, name: %s, value: %s",
+		metricType, name, value)
 	return nil
 }
 
@@ -85,26 +89,32 @@ func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
 	case metric.TypeCounter.String():
 		{
 			if _, ok := s.storage.CounterMetrics[name]; !ok {
-				log.Println(errPointGetValue, errIsMetricDoesntExist)
+				s.logger.Error(errPointGetValue, errIsMetricDoesntExist)
 				return "", errIsMetricDoesntExist
 			}
 			val := strconv.FormatInt(int64(s.storage.CounterMetrics[name]), 10)
-			log.Println("metric was found", metricType, name, val)
-
+			s.logger.Infof("metric was found with type: %s, name: %s, value: %s",
+				metricType, name, val)
 			return val, nil
 		}
 	case metric.TypeGauge.String():
 		{
 			if _, ok := s.storage.GaugeMetrics[name]; !ok {
-				log.Println(errPointGetValue, errIsMetricDoesntExist)
+				s.logger.Error(errPointGetValue, errIsMetricDoesntExist)
 				return "", errIsMetricDoesntExist
 			}
 			val := strconv.FormatFloat(float64(s.storage.GaugeMetrics[name]), 'f', -1, 64)
-			log.Println("metric was found", metricType, name, val)
+			s.logger.Infof("metric was found with type: %s, name: %s, value: %s",
+				metricType, name, val)
 			return val, nil
 		}
+	default:
+		{
+			s.logger.Error(errPointGetValue, errIsUnknownType)
+			return "", e.WrapError(errPointGetValue, errIsUnknownType)
+		}
 	}
-	return "", nil
+
 }
 
 func (s *LocalStorage) GetMetrics() ([]store.Metric, error) {

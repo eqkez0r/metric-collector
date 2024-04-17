@@ -3,10 +3,9 @@ package agent
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/config"
-	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/go-resty/resty/v2"
-	"log"
+	"go.uber.org/zap"
 	"runtime"
 	"strconv"
 	"strings"
@@ -24,6 +23,7 @@ const (
 )
 
 type Agent struct {
+	logger      *zap.SugaredLogger
 	settings    *config.AgentConfig
 	client      *resty.Client
 	pollCounter int64
@@ -33,8 +33,12 @@ type Agent struct {
 	mu          *sync.Mutex
 }
 
-func New(ctx context.Context, settings *config.AgentConfig) *Agent {
+func New(
+	ctx context.Context,
+	settings *config.AgentConfig,
+	logger *zap.SugaredLogger) *Agent {
 	return &Agent{
+		logger:      logger,
 		ctx:         ctx,
 		settings:    settings,
 		client:      resty.New(),
@@ -43,7 +47,7 @@ func New(ctx context.Context, settings *config.AgentConfig) *Agent {
 }
 
 func (a *Agent) Run() {
-	log.Println("agent was started")
+
 	a.mu = &sync.Mutex{}
 	ms := &runtime.MemStats{}
 	a.mp = metric.PrepareMetrics(ms)
@@ -51,8 +55,9 @@ func (a *Agent) Run() {
 	go a.pollMetric(ms)
 	a.wg.Add(1)
 	go a.postMetrics()
+	a.logger.Info("agent was started.")
 	a.wg.Wait()
-	log.Println("agent was stopped")
+	a.logger.Info("agent was stopped")
 }
 
 func (a *Agent) postMetrics() {
@@ -62,7 +67,7 @@ func (a *Agent) postMetrics() {
 		select {
 		case <-a.ctx.Done():
 			{
-				log.Println("post metrics was stopped")
+				a.logger.Info("post metrics was stopped")
 				return
 			}
 		case <-ticker.C:
@@ -76,10 +81,11 @@ func (a *Agent) postMetrics() {
 							SetHeader("Content-Type", "text/plain").
 							Post(endPoint)
 						if err != nil {
-							log.Println(e.WrapError(errPointPostMetrics, err))
+							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 							continue
 						}
-						log.Printf("%s was updated. response status code: %d", metricName, resp.StatusCode())
+						a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+							endPoint, resp.StatusCode(), resp.Size())
 					}
 				}
 			}
@@ -94,7 +100,7 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 		select {
 		case <-a.ctx.Done():
 			{
-				log.Println("update metrics was stopped")
+				a.logger.Info("poll metrics was stopped")
 				return
 			}
 		case <-ticker.C:
@@ -102,10 +108,9 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 				// Обертка сделана для того, чтобы можно было корректно сбросить mutex
 				func() {
 					a.mu.Lock()
-					defer log.Println("update metrics")
+					defer a.logger.Info("update metrics")
 					defer a.mu.Unlock()
 					metric.UpdateMetrics(ms, a.mp)
-
 				}()
 
 			}

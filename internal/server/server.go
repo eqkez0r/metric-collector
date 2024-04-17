@@ -3,35 +3,36 @@ package httpserver
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/config"
-	"github.com/Eqke/metric-collector/internal/handlers"
+	handlers2 "github.com/Eqke/metric-collector/internal/server/handlers"
+	"github.com/Eqke/metric-collector/internal/server/middleware"
 	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
-	"io"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 )
 
 type HTTPServer struct {
+	ctx      context.Context
 	server   *http.Server
 	engine   *gin.Engine
 	settings *config.ServerConfig
-	ctx      context.Context
+	logger   *zap.SugaredLogger
 }
 
-func New(ctx context.Context, s *config.ServerConfig, storage stor.Storage) *HTTPServer {
+func New(
+	ctx context.Context,
+	s *config.ServerConfig,
+	storage stor.Storage,
+	logger *zap.SugaredLogger) *HTTPServer {
 
 	gin.DisableConsoleColor()
-	f, err := os.Create("gin-metric.log")
-	if err != nil {
-		log.Println(err)
-	}
-	gin.DefaultWriter = io.MultiWriter(f)
-	r := gin.New()
 
-	r.GET("/", handlers.GetRootMetricsHandler(storage))
-	r.GET("/value/:type/:name", handlers.GETMetricHandler(storage))
-	r.POST("/update/:type/:name/:value", handlers.POSTMetricHandler(storage))
+	r := gin.New()
+	r.Use(middleware.Logger(logger))
+	r.GET("/", handlers2.GetRootMetricsHandler(logger, storage))
+	r.GET("/value/:type/:name", handlers2.GETMetricHandler(logger, storage))
+	r.POST("/update/:type/:name/:value", handlers2.POSTMetricHandler(logger, storage))
 
 	return &HTTPServer{
 		server: &http.Server{
@@ -41,14 +42,16 @@ func New(ctx context.Context, s *config.ServerConfig, storage stor.Storage) *HTT
 		engine:   r,
 		settings: s,
 		ctx:      ctx,
+		logger:   logger,
 	}
 }
 
 func (s HTTPServer) Run() {
-	log.Printf("Server was started.\n Listening on: %s", s.settings.Endpoint)
+	s.logger.Infof("Server was started.\n Listening on: %s", s.settings.Endpoint)
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
-			log.Fatalf("listen and serve: %v", err)
+			s.logger.Errorf("Server error: %v", err)
+			os.Exit(1)
 		}
 	}()
 	<-s.ctx.Done()
@@ -56,9 +59,9 @@ func (s HTTPServer) Run() {
 }
 
 func (s HTTPServer) Shutdown() {
-	log.Println("Server was stopped.")
+	s.logger.Infof("Server was stopped.")
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
-		log.Printf("Server shutdown failed: %v", err)
+		s.logger.Errorf("Server shutdown error: %v", err)
 	}
 }
