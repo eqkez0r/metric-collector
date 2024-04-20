@@ -79,13 +79,25 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if m.ID == "" {
+		s.logger.Error(errPointSetValue, store.ErrIDIsEmpty)
+		return store.ErrIDIsEmpty
+	}
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
+			if m.Delta == nil {
+				s.logger.Error(errPointSetValue, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
 			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
 		}
 	case metric.TypeGauge.String():
 		{
+			if m.Value == nil {
+				s.logger.Error(errPointSetValue, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
 			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
 		}
 	}

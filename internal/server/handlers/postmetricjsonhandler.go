@@ -31,6 +31,14 @@ func POSTMetricJSONHandler(
 				context.Status(http.StatusBadRequest)
 				return
 			}
+			if errors.Is(err, storage.ErrIDIsEmpty) {
+				context.Status(http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, storage.ErrValueIsEmpty) {
+				context.Status(http.StatusNotFound)
+				return
+			}
 			context.Status(http.StatusInternalServerError)
 			return
 		}

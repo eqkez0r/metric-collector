@@ -8,6 +8,8 @@ import (
 var (
 	ErrIsMetricDoesntExist = errors.New("metric doesn't exist")
 	ErrIsUnknownType       = errors.New("unknown metric type")
+	ErrIDIsEmpty           = errors.New("metric name is empty")
+	ErrValueIsEmpty        = errors.New("metric value is empty")
 )
 
 type Metric struct {

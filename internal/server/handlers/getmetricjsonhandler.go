@@ -8,24 +8,39 @@ import (
 	"net/http"
 )
 
+var (
+	errPointGetMetricJson = "error in GET /value: "
+)
+
 func GetMetricJSONHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var m metric.Metrics
+		ct := context.GetHeader("Content-Type")
+		context.Header("Content-Type", "application/json")
+		if ct != "application/json" {
+			logger.Errorf("%s: unknown content type %s", errPointGetMetricJson, ct)
+			context.Status(http.StatusNotFound)
+			return
+		}
 		if err := context.BindJSON(&m); err != nil {
-			logger.Errorf("%s: %v", errPointGetMetric, err)
+			logger.Errorf("%s: %v", errPointGetMetricJson, err)
 			context.Status(http.StatusBadRequest)
+			return
+		}
+		if m.ID == "" {
+			logger.Errorf("%s: empty metric name", errPointGetMetricJson)
+			context.Status(http.StatusNotFound)
 			return
 		}
 		finVal, err := s.GetMetric(m)
 		if err != nil {
-			logger.Errorf("%s: %v", errPointGetMetric, err)
-			context.Status(http.StatusBadRequest)
+			logger.Errorf("%s: %v", errPointGetMetricJson, err)
+			context.Status(http.StatusNotFound)
 			return
 		}
 
-		context.Header("Content-Type", "application/json")
 		context.JSON(http.StatusOK, finVal)
 	}
 }

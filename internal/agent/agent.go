@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/Eqke/metric-collector/internal/config"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/go-resty/resty/v2"
@@ -38,8 +39,8 @@ func New(
 	settings *config.AgentConfig,
 	logger *zap.SugaredLogger) *Agent {
 	return &Agent{
-		logger:      logger,
 		ctx:         ctx,
+		logger:      logger,
 		settings:    settings,
 		client:      resty.New(),
 		pollCounter: 0,
@@ -47,7 +48,6 @@ func New(
 }
 
 func (a *Agent) Run() {
-
 	a.mu = &sync.Mutex{}
 	ms := &runtime.MemStats{}
 	a.mp = metric.PrepareMetrics(ms)
@@ -76,16 +76,63 @@ func (a *Agent) postMetrics() {
 				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
 				for metricType, metricMap := range a.mp {
 					for metricName, metricValue := range metricMap {
-						endPoint := a.getPathToMetric(metricType.String(), metricName.String(), metricValue)
+						//todo refactor
+						m := metric.Metrics{
+							ID:    metricName.String(),
+							MType: metricType.String(),
+							Delta: nil,
+							Value: nil,
+						}
+						switch metricType {
+						case metric.TypeGauge:
+							{
+								val, err := strconv.ParseFloat(metricValue, 64)
+								if err != nil {
+									a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+									continue
+								}
+								m.Value = &val
+							}
+						case metric.TypeCounter:
+							{
+								val, err := strconv.ParseInt(metricValue, 10, 64)
+								if err != nil {
+									a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+									continue
+								}
+								m.Delta = &val
+							}
+						default:
+							{
+								a.logger.Errorf("unknown metric type: %s", metricType)
+								continue
+							}
+						}
+						bytes, err := json.Marshal(m)
+						if err != nil {
+							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+							continue
+						}
+						endPoint := "http://" + a.settings.AgentEndpoint + "/update"
 						resp, err := a.client.R().
-							SetHeader("Content-Type", "text/plain").
-							Post(endPoint)
+							SetHeader("Content-Type", "application/json").
+							SetBody(bytes).Post(endPoint)
 						if err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 							continue
 						}
 						a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
 							endPoint, resp.StatusCode(), resp.Size())
+						//endPoint := a.getPathToMetric(metricType.String(), metricName.String(), metricValue)
+						//resp, err := a.client.R().
+						//	SetHeader("Content-Type", "text/plain").
+						//	Post(endPoint)
+						//if err != nil {
+						//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						//	continue
+						//}
+						//a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+						//	endPoint, resp.StatusCode(), resp.Size())
 					}
 				}
 			}
