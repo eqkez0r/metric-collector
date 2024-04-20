@@ -9,24 +9,28 @@ import (
 	"net/http"
 )
 
+var (
+	errPointPostMetricJSON = "error in POST /value: "
+)
+
 func POSTMetricJSONHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		if context.ContentType() != "application/json" {
-			logger.Errorf("%s: unknown content type %s", errPointPostMetric, context.ContentType())
+			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, context.ContentType())
 			context.Status(http.StatusBadRequest)
 			return
 		}
 		var m metric.Metrics
 		if err := context.BindJSON(&m); err != nil {
-			logger.Errorf("%s: %v", errPointPostMetric, err)
+			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			context.Status(http.StatusBadRequest)
 			return
 		}
 		logger.Info("metric was received", m)
 		if err := s.SetMetric(m); err != nil {
-			logger.Errorf("%s: %v", errPointPostMetric, err)
+			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			if errors.Is(err, storage.ErrIsUnknownType) {
 				context.Status(http.StatusBadRequest)
 				return

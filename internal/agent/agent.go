@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	pollCounterName = "pollCounter"
+	pollCounterName = "PollCount"
 	randName        = "random"
 	typeGauge       = "gauge"
 	typeCounter     = "counter"
@@ -74,9 +74,11 @@ func (a *Agent) postMetrics() {
 			{
 				a.pollCounter++
 				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
+
 				for metricType, metricMap := range a.mp {
 					for metricName, metricValue := range metricMap {
-						//todo refactor
+						a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
+							metricType, metricName, metricValue)
 						m := metric.Metrics{
 							ID:    metricName.String(),
 							MType: metricType.String(),

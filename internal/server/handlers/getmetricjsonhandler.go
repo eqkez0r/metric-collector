@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	errPointGetMetricJson = "error in GET /value: "
+	errPointGetMetricJSON = "error in GET /value: "
 )
 
 func GetMetricJSONHandler(
@@ -20,23 +20,23 @@ func GetMetricJSONHandler(
 		ct := context.GetHeader("Content-Type")
 		context.Header("Content-Type", "application/json")
 		if ct != "application/json" {
-			logger.Errorf("%s: unknown content type %s", errPointGetMetricJson, ct)
+			logger.Errorf("%s: unknown content type %s", errPointGetMetricJSON, ct)
 			context.Status(http.StatusNotFound)
 			return
 		}
 		if err := context.BindJSON(&m); err != nil {
-			logger.Errorf("%s: %v", errPointGetMetricJson, err)
+			logger.Errorf("%s: %v", errPointGetMetricJSON, err)
 			context.Status(http.StatusBadRequest)
 			return
 		}
 		if m.ID == "" {
-			logger.Errorf("%s: empty metric name", errPointGetMetricJson)
+			logger.Errorf("%s: empty metric name", errPointGetMetricJSON)
 			context.Status(http.StatusNotFound)
 			return
 		}
 		finVal, err := s.GetMetric(m)
 		if err != nil {
-			logger.Errorf("%s: %v", errPointGetMetricJson, err)
+			logger.Errorf("%s: %v", errPointGetMetricJSON, err)
 			context.Status(http.StatusNotFound)
 			return
 		}
