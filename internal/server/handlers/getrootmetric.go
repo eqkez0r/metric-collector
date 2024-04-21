@@ -24,7 +24,7 @@ func GetRootMetricsHandler(
 			return
 		}
 		logger.Infof("metrics get success")
-		bytes, err := json.Marshal(metrics)
+		bytes, err := json.MarshalIndent(metrics, "", "  ")
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
 			context.Status(http.StatusInternalServerError)
