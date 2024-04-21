@@ -32,19 +32,18 @@ func Gzip(
 			(avaliableTypes[ct] || avaliableTypes[ac]) {
 			logger.Debug("request was encoded. decoding...")
 			logger.Debugf("Content-Type: %s, Accept: %s, Accept-Encoding: %s", ct, ac, ae)
-			w := context.Writer
-			gzipWriter := gzip.NewWriter(w)
+			gzipWriter := gzip.NewWriter(context.Writer)
 			defer gzipWriter.Close()
-			w = compress.GzipWriter{
+			w := compress.GzipWriter{
 				ResponseWriter: context.Writer,
 				Writer:         gzipWriter,
 			}
+			context.Writer = w
 			context.Header("Content-Encoding", "application/gzip")
 		}
 
 		//uncompressed request
 		ce := context.GetHeader("Content-Encoding")
-		logger.Debugf("Content-Encoding: %s", ce)
 		if strings.Contains(ce, "gzip") {
 			gzipReader, err := gzip.NewReader(context.Request.Body)
 			if err != nil {
