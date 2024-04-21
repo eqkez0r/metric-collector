@@ -88,9 +88,9 @@ func (a *Agent) postMetrics() {
 					for metricName, metricValue := range metricMap {
 						a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
 							metricType, metricName, metricValue)
-						if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-						}
+						//if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+						//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						//}
 						if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
