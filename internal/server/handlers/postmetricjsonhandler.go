@@ -28,6 +28,7 @@ func POSTMetricJSONHandler(
 			context.Status(http.StatusBadRequest)
 			return
 		}
+
 		logger.Info("metric was received", m)
 		if err := s.SetMetric(m); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)

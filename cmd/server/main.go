@@ -28,4 +28,5 @@ func main() {
 	storage := localstorage.New(sugLog)
 	server := httpserver.New(ctx, settings, storage, sugLog)
 	server.Run()
+	server.Shutdown()
 }

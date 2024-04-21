@@ -1,12 +1,17 @@
 package agent
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Eqke/metric-collector/internal/config"
+	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
+	"log"
 	"runtime"
 	"strconv"
 	"strings"
@@ -21,6 +26,10 @@ const (
 	typeCounter     = "counter"
 
 	errPointPostMetrics = "error in agent.postMetrics(): "
+)
+
+var (
+	ErrUnknownMetricType = errors.New("unknown metric type")
 )
 
 type Agent struct {
@@ -79,67 +88,80 @@ func (a *Agent) postMetrics() {
 					for metricName, metricValue := range metricMap {
 						a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
 							metricType, metricName, metricValue)
-						m := metric.Metrics{
-							ID:    metricName.String(),
-							MType: metricType.String(),
-							Delta: nil,
-							Value: nil,
-						}
-						switch metricType {
-						case metric.TypeGauge:
-							{
-								val, err := strconv.ParseFloat(metricValue, 64)
-								if err != nil {
-									a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-									continue
-								}
-								m.Value = &val
-							}
-						case metric.TypeCounter:
-							{
-								val, err := strconv.ParseInt(metricValue, 10, 64)
-								if err != nil {
-									a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-									continue
-								}
-								m.Delta = &val
-							}
-						default:
-							{
-								a.logger.Errorf("unknown metric type: %s", metricType)
-								continue
-							}
-						}
-						bytes, err := json.Marshal(m)
-						if err != nil {
-							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-							continue
-						}
-						endPoint := "http://" + a.settings.AgentEndpoint + "/update"
-						resp, err := a.client.R().
-							SetHeader("Content-Type", "application/json").
-							SetBody(bytes).Post(endPoint)
-						if err != nil {
-							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-							continue
-						}
-						a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
-							endPoint, resp.StatusCode(), resp.Size())
-						//endPoint := a.getPathToMetric(metricType.String(), metricName.String(), metricValue)
-						//resp, err := a.client.R().
-						//	SetHeader("Content-Type", "text/plain").
-						//	Post(endPoint)
-						//if err != nil {
+						//if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 						//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-						//	continue
 						//}
-						//a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
-						//	endPoint, resp.StatusCode(), resp.Size())
+						//if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+						//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						//}
+						if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						}
 					}
 				}
 			}
 		}
 	}
+}
+
+func (a *Agent) pollUsualMetric(metricName, metricType, metricValue string) error {
+	endPoint := a.getEndpointToUsualMetric(metricType, metricName, metricValue)
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "text/plain").
+		Post(endPoint)
+	if err != nil {
+		log.Println(e.WrapError(errPointPostMetrics, err))
+		return err
+	}
+	a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+		endPoint, resp.StatusCode(), resp.Size())
+	return nil
+}
+
+func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error {
+	bytes, err := a.prepareJSONMetric(metricName, metricType, metricValue)
+	endPoint := a.getEndpointToJSONMetric()
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(bytes).Post(endPoint)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+		endPoint, resp.StatusCode(), resp.Size())
+	return nil
+}
+
+func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) error {
+	bytes, err := a.prepareJSONMetric(metricName, metricType, metricValue)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+
+	endPoint := a.getEndpointToJSONMetric()
+	encoded, err := a.compress(bytes)
+
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip").
+		SetBody(encoded).
+		Post(endPoint)
+
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+		endPoint, resp.StatusCode(), resp.Size())
+	return nil
 }
 
 func (a *Agent) pollMetric(ms *runtime.MemStats) {
@@ -167,6 +189,65 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 	}
 }
 
-func (a *Agent) getPathToMetric(metricType, metricName, metricValue string) string {
+func (a *Agent) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
 	return strings.Join([]string{"http:/", a.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
+}
+
+func (a *Agent) getEndpointToJSONMetric() string {
+	return strings.Join([]string{"http:/", a.settings.AgentEndpoint, "update"}, "/")
+}
+
+func (a *Agent) prepareJSONMetric(metricName, metricType, metricValue string) ([]byte, error) {
+	m := metric.Metrics{
+		ID:    metricName,
+		MType: metricType,
+		Delta: nil,
+		Value: nil,
+	}
+
+	switch metricType {
+	case metric.TypeGauge.String():
+		{
+			val, err := strconv.ParseFloat(metricValue, 64)
+			if err != nil {
+				a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				return nil, err
+			}
+			m.Value = &val
+		}
+	case metric.TypeCounter.String():
+		{
+			val, err := strconv.ParseInt(metricValue, 10, 64)
+			if err != nil {
+				a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				return nil, err
+			}
+			m.Delta = &val
+		}
+	default:
+		{
+			a.logger.Errorf("unknown metric type: %s", metricType)
+			return nil, ErrUnknownMetricType
+		}
+	}
+
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return nil, err
+	}
+	return bytes, nil
+}
+
+func (a *Agent) compress(b []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	gz := gzip.NewWriter(buf)
+
+	_, err := gz.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	gz.Close()
+
+	return buf.Bytes(), nil
 }

@@ -30,7 +30,7 @@ func New(
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	r.Use(middleware.Logger(logger))
+	r.Use(middleware.Logger(logger), middleware.GzipMiddleware(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
 	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
@@ -58,7 +58,7 @@ func (s HTTPServer) Run() {
 		}
 	}()
 	<-s.ctx.Done()
-	s.Shutdown()
+
 }
 
 func (s HTTPServer) Shutdown() {
