@@ -30,7 +30,7 @@ func New(
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	r.Use(middleware.Logger(logger), middleware.GzipMiddleware(logger))
+	r.Use(middleware.Logger(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
 	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
