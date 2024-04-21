@@ -15,7 +15,7 @@ func GetRootMetricsHandler(
 	logger *zap.SugaredLogger,
 	storage storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-		logger.Infof("metrics was requested")
+		logger.Infof("root metrics handler was called")
 		metrics, err := storage.GetMetrics()
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetRootMetrics, err)

@@ -16,6 +16,7 @@ func GetMetricJSONHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
+		logger.Debug("get metric json handler was called")
 		var m metric.Metrics
 		ct := context.GetHeader("Content-Type")
 		context.Header("Content-Type", "application/json")
@@ -40,7 +41,7 @@ func GetMetricJSONHandler(
 			context.Status(http.StatusNotFound)
 			return
 		}
-
+		logger.Infof("metric get success with type: %s, name: %s, value: %d", m.MType, m.ID, *finVal.Delta)
 		context.JSON(http.StatusOK, finVal)
 	}
 }

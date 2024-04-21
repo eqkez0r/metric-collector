@@ -120,6 +120,10 @@ func (a *Agent) pollUsualMetric(metricName, metricType, metricValue string) erro
 
 func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error {
 	bytes, err := a.prepareJSONMetric(metricName, metricType, metricValue)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
 	endPoint := a.getEndpointToJSONMetric()
 	resp, err := a.client.R().
 		SetHeader("Content-Type", "application/json").

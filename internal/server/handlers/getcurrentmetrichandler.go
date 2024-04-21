@@ -15,7 +15,7 @@ func GETMetricHandler(
 	logger *zap.SugaredLogger,
 	storage storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-
+		logger.Debug("get metric handler was called")
 		metricType := context.Param("type")
 		metricName := context.Param("name")
 		logger.Infof("metric was requested with type: %s, name: %s", metricType, metricName)

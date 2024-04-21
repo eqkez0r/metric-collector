@@ -25,10 +25,12 @@ func GzipMiddleware(
 	return func(context *gin.Context) {
 		ae := context.GetHeader("Accept-Encoding")
 		ct := context.GetHeader("Content-Type")
-		ce := context.GetHeader("Content-Encoding")
 		ac := context.GetHeader("Accept")
+
 		if (strings.Contains(ae, "gzip")) &&
-			(avaliableTypes[ct] || avaliableTypes[ac]) {
+			(avaliableTypes[ct] && avaliableTypes[ac]) {
+			logger.Debug("request was encoded. decoding...")
+			logger.Debugf("Content-Type: %s, Accept: %s, Accept-Encoding: %s", ct, ac, ae)
 			w := context.Writer
 			gzipWriter := gzip.NewWriter(w)
 			defer gzipWriter.Close()
@@ -36,8 +38,11 @@ func GzipMiddleware(
 				ResponseWriter: context.Writer,
 				Writer:         gzipWriter,
 			}
-			context.Header("Content-Encoding", "gzip")
+			context.Header("Content-Encoding", "application/gzip")
 		}
+
+		ce := context.GetHeader("Content-Encoding")
+		logger.Debugf("Content-Encoding: %s", ce)
 		if strings.Contains(ce, "gzip") {
 			gzipReader, err := gzip.NewReader(context.Request.Body)
 			if err != nil {
