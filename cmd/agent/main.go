@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatal(err)

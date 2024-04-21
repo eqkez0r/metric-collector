@@ -30,8 +30,6 @@ func Gzip(
 		ac := context.GetHeader("Accept")
 		if (strings.Contains(ae, "gzip")) &&
 			(avaliableTypes[ct] || avaliableTypes[ac]) {
-			logger.Debug("request was encoded. decoding...")
-			logger.Debugf("Content-Type: %s, Accept: %s, Accept-Encoding: %s", ct, ac, ae)
 			w := context.Writer
 			gzipWriter := gzip.NewWriter(w)
 			defer gzipWriter.Close()

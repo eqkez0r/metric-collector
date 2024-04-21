@@ -71,7 +71,7 @@ func (a *Agent) Run() {
 
 func (a *Agent) postMetrics() {
 	defer a.wg.Done()
-	ticker := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
+	t := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -79,7 +79,7 @@ func (a *Agent) postMetrics() {
 				a.logger.Info("post metrics was stopped")
 				return
 			}
-		case <-ticker.C:
+		case <-t.C:
 			{
 				a.pollCounter++
 				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
@@ -94,7 +94,7 @@ func (a *Agent) postMetrics() {
 						if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
-						time.Sleep(time.Millisecond * 500)
+
 						if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}

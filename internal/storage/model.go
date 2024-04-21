@@ -27,4 +27,8 @@ type Storage interface {
 	GetGaugeMetric(string) metric.Gauge
 	GetCounterMetrics() map[string]metric.Counter
 	GetCounterMetric(string) metric.Counter
+	ToJSON() ([]byte, error)
+	FromJSON([]byte) error
+	ToFile(string) error
+	FromFile(string) error
 }

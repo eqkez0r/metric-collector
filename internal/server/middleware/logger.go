@@ -10,7 +10,6 @@ func Logger(
 	logger *zap.SugaredLogger,
 ) gin.HandlerFunc {
 	logFn := func(context *gin.Context) {
-		logger.Debugf("logger middleware was called")
 
 		start := time.Now()
 

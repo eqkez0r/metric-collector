@@ -1,10 +1,13 @@
 package localstorage
 
 import (
+	"bytes"
+	"encoding/json"
 	store "github.com/Eqke/metric-collector/internal/storage"
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"go.uber.org/zap"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -231,4 +234,38 @@ func (s *LocalStorage) GetCounterMetric(name string) metric.Counter {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.storage.CounterMetrics[name]
+}
+
+func (s *LocalStorage) ToJSON() ([]byte, error) {
+	return json.MarshalIndent(s.storage, "", "  ")
+}
+
+func (s *LocalStorage) FromJSON(data []byte) error {
+	return json.Unmarshal(data, &s.storage)
+}
+
+func (s *LocalStorage) ToFile(path string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, err := s.ToJSON()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (s *LocalStorage) FromFile(path string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	var data bytes.Buffer
+	_, err = f.WriteTo(&data)
+	if err != nil {
+		return err
+	}
+	return s.FromJSON(data.Bytes())
 }

@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 )
 
 type HTTPServer struct {
@@ -18,6 +20,8 @@ type HTTPServer struct {
 	engine   *gin.Engine
 	settings *config.ServerConfig
 	logger   *zap.SugaredLogger
+	wg       sync.WaitGroup
+	storage  stor.Storage
 }
 
 func New(
@@ -46,22 +50,67 @@ func New(
 		settings: s,
 		ctx:      ctx,
 		logger:   logger,
+		wg:       sync.WaitGroup{},
+		storage:  storage,
 	}
 }
 
-func (s HTTPServer) Run() {
-	s.logger.Infof("Server was started.\n Listening on: %s", s.settings.Endpoint)
+func (s *HTTPServer) restore() {
+	defer s.wg.Done()
+	s.logger.Info("Restore was started")
+	t := time.NewTicker(time.Duration(s.settings.StoreInterval) * time.Second)
+	for {
+		select {
+		case <-s.ctx.Done():
+			{
+				s.logger.Info("Restore was finished")
+				return
+			}
+		case <-t.C:
+			{
+				s.logger.Info("Restored...")
+				func() {
+					b, err := s.storage.ToJSON()
+					if err != nil {
+						s.logger.Errorf("Restore error getting storage: %v", err)
+						return
+					}
+					f, err := os.OpenFile(s.settings.FileStoragePath, os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						s.logger.Errorf("Restore error opening file: %v", err)
+						return
+					}
+					defer f.Close()
+					_, err = f.Write(b)
+					if err != nil {
+						s.logger.Errorf("Restore error writing file: %v", err)
+						return
+					}
+				}()
+				s.logger.Info("Restore was finished")
+			}
+		}
+	}
+}
+
+func (s *HTTPServer) Run() {
+	s.logger.Infof("Server was started. Listening on: %s", s.settings.Endpoint)
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
 			s.logger.Errorf("Server error: %v", err)
 			os.Exit(1)
 		}
 	}()
-	<-s.ctx.Done()
+	if s.settings.Restore {
+		s.wg.Add(1)
+		go s.restore()
+	}
 
+	<-s.ctx.Done()
+	s.wg.Wait()
 }
 
-func (s HTTPServer) Shutdown() {
+func (s *HTTPServer) Shutdown() {
 	s.logger.Infof("Server was stopped.")
 	err := s.server.Shutdown(context.Background())
 	if err != nil {

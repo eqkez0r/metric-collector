@@ -17,7 +17,7 @@ func POSTMetricJSONHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-		logger.Debug("post metric json handler was called")
+
 		if context.ContentType() != "application/json" {
 			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, context.ContentType())
 			context.Status(http.StatusBadRequest)
