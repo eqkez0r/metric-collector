@@ -24,5 +24,6 @@ func GetRootMetricsHandler(
 		}
 		logger.Infof("metrics get success")
 		context.IndentedJSON(http.StatusOK, metrics)
+		context.Header("Content-Type", "html/text")
 	}
 }
