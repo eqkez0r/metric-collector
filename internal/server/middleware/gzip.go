@@ -19,16 +19,17 @@ var avaliableTypes = map[string]bool{
 	"html/text":        true,
 }
 
-func GzipMiddleware(
+func Gzip(
 	logger *zap.SugaredLogger,
 ) gin.HandlerFunc {
 	return func(context *gin.Context) {
+
+		//compress response
 		ae := context.GetHeader("Accept-Encoding")
 		ct := context.GetHeader("Content-Type")
 		ac := context.GetHeader("Accept")
-
 		if (strings.Contains(ae, "gzip")) &&
-			(avaliableTypes[ct] && avaliableTypes[ac]) {
+			(avaliableTypes[ct] || avaliableTypes[ac]) {
 			logger.Debug("request was encoded. decoding...")
 			logger.Debugf("Content-Type: %s, Accept: %s, Accept-Encoding: %s", ct, ac, ae)
 			w := context.Writer
@@ -41,6 +42,7 @@ func GzipMiddleware(
 			context.Header("Content-Encoding", "application/gzip")
 		}
 
+		//uncompressed request
 		ce := context.GetHeader("Content-Encoding")
 		logger.Debugf("Content-Encoding: %s", ce)
 		if strings.Contains(ce, "gzip") {

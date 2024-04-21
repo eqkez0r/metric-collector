@@ -127,7 +127,8 @@ func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error
 	endPoint := a.getEndpointToJSONMetric()
 	resp, err := a.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(bytes).Post(endPoint)
+		SetBody(bytes).
+		Post(endPoint)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -146,7 +147,6 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 
 	endPoint := a.getEndpointToJSONMetric()
 	encoded, err := a.compress(bytes)
-
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -155,7 +155,6 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 	resp, err := a.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetHeader("Accept-Encoding", "gzip").
 		SetBody(encoded).
 		Post(endPoint)
 

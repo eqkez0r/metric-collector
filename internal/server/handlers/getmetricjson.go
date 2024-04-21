@@ -41,7 +41,7 @@ func GetMetricJSONHandler(
 			context.Status(http.StatusNotFound)
 			return
 		}
-		logger.Infof("metric get success with type: %s, name: %s, value: %d", m.MType, m.ID, *finVal.Delta)
+		logger.Infof("metric get success with type: %s, name: %s", m.MType, m.ID)
 		context.JSON(http.StatusOK, finVal)
 	}
 }
