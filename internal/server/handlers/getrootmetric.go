@@ -30,8 +30,8 @@ func GetRootMetricsHandler(
 			context.Status(http.StatusInternalServerError)
 			return
 		}
-		context.String(http.StatusOK, string(bytes))
-		context.Header("Content-Type", "text/html")
+		context.Data(http.StatusOK, "text/html", bytes)
+
 		logger.Infof("root metrics handler was finished")
 	}
 }
