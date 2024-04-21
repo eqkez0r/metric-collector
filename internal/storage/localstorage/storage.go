@@ -83,6 +83,7 @@ func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 		s.logger.Error(errPointSetValue, store.ErrIDIsEmpty)
 		return store.ErrIDIsEmpty
 	}
+
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	errPointGetMetricJSON = "error in GET /value: "
+	errPointGetMetricJSON = "error in POST /value: "
 )
 
 func GetMetricJSONHandler(

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	errPointPostMetricJSON = "error in POST /value: "
+	errPointPostMetricJSON = "error in POST /update: "
 )
 
 func POSTMetricJSONHandler(
