@@ -94,6 +94,7 @@ func (a *Agent) postMetrics() {
 						if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
+						time.Sleep(time.Millisecond * 500)
 						if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
