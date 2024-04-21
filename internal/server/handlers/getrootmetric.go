@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -23,7 +24,14 @@ func GetRootMetricsHandler(
 			return
 		}
 		logger.Infof("metrics get success")
-		context.IndentedJSON(http.StatusOK, metrics)
-		context.Header("Content-Type", "html/text")
+		bytes, err := json.Marshal(metrics)
+		if err != nil {
+			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
+			context.Status(http.StatusInternalServerError)
+			return
+		}
+		context.String(http.StatusOK, string(bytes))
+		context.Header("Content-Type", "text/html")
+		logger.Infof("root metrics handler was finished")
 	}
 }
