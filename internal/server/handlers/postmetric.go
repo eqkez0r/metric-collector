@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/Eqke/metric-collector/internal/storage"
-	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/gin-gonic/gin"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -14,30 +12,37 @@ const (
 	errPointPostMetric = "error in POST /update/:type/:name/:value"
 )
 
-func POSTMetricHandler(storage storage.Storage) gin.HandlerFunc {
+func POSTMetricHandler(
+	logger *zap.SugaredLogger,
+	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 
 		metricType := context.Param("type")
+		metricName := context.Param("name")
+
 		if metricType != metric.TypeCounter.String() && metricType != metric.TypeGauge.String() {
-			log.Println(e.WrapError(errPointPostMetric, errors.New("invalid metric type "+metricType)))
+			logger.Errorf("%s: unknown metric type %s", errPointPostMetric, metricType)
 			context.Status(http.StatusBadRequest)
 			return
 		}
-		metricName := context.Param("name")
+
 		if metricName == "" {
-			log.Println(e.WrapError(errPointPostMetric, errors.New("empty metric name")))
+			logger.Errorf("%s: empty metric name", errPointPostMetric)
 			context.Status(http.StatusNotFound)
 			return
 		}
 		metricValue := context.Param("value")
-		log.Println("metric was received", metricType, metricName, metricValue)
-		err := storage.SetValue(metricType, metricName, metricValue)
+		logger.Infof("metric was received with type: %s, name: %s, value: %s",
+			metricType, metricName, metricValue)
+		err := s.SetValue(metricType, metricName, metricValue)
 		if err != nil {
-			log.Println(e.WrapError(errPointPostMetric, err))
+			logger.Errorf("%s: %v", errPointPostMetric, err)
 			context.Status(http.StatusBadRequest)
 			return
 		}
-		log.Println("metric was updated")
+		logger.Infof("metric was saved with type: %s, name: %s, value: %s",
+			metricType, metricName, metricValue)
+
 		context.Status(http.StatusOK)
 
 	}

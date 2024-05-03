@@ -1,9 +1,73 @@
 version: '3'
 
+env:
+  SERVER_PORT: 8080
+  TEMP_FILE: {{.USER_WORKING_DIR}}/tmp/metrics-db.json
 tasks:
+  default:
+    - task: buildForTest
+    - task: test
+    - task: iter1
+    - task: iter2
+    - task: iter3
+    - task: iter4
+    - task: iter5
+    - task: iter6
+    - task: iter7
+
+  run:
+    cmds:
+      - ./build/server.exe
+      - ./build/agent.exe
+
   build:
     cmds:
       - powershell New-Item -ItemType Directory -Force -Path ./build
-      - go test -v ./...
+
       - go build -o build/agent.exe ./cmd/agent
       - go build -o build/server.exe ./cmd/server
+
+  buildForTest:
+    cmds:
+      - go build -o cmd/agent/agent.exe ./cmd/agent
+      - go build -o cmd/server/server.exe ./cmd/server
+
+  test:
+    cmds:
+      - go test -v ./...
+
+  iter1:
+    cmds:
+     - ./metricstest.exe -test.v -test.run=^TestIteration1$$ -binary-path=cmd/server/main.exe
+
+  iter2:
+    cmds:
+      - ./metricstest.exe -test.v -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/main.exe
+
+  iter3:
+    cmds:
+      - ./metricstest.exe -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -binary-path=cmd/server/main.exe -agent-binary-path=cmd/agent/main.exe
+
+  iter4:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/main.exe -binary-path=cmd/server/main.exe -server-port=$SERVER_PORT-source-path=.
+
+  iter5:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/main.exe -binary-path=cmd/server/main.exe -server-port=$SERVER_PORT -source-path=.
+
+  iter6:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+
+  iter7:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+
+  iter8:
+    cmds:
+      - metricstest -test.v -test.run=^TestIteration8$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+
+  iter9:
+    cmds:
+      - metricstest -test.v -test.run=^TestIteration9$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=$TEMP_FILE -server-port=$SERVER_PORT -source-path=.
