@@ -55,10 +55,11 @@ func New(
 	}
 }
 
-func (s *HTTPServer) restore() {
+func (s *HTTPServer) restoreProcess() {
 	defer s.wg.Done()
 	s.logger.Info("Restore was started")
 	t := time.NewTicker(time.Duration(s.settings.StoreInterval) * time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -69,41 +70,47 @@ func (s *HTTPServer) restore() {
 		case <-t.C:
 			{
 				s.logger.Info("Restored...")
-				func() {
-					b, err := s.storage.ToJSON()
-					if err != nil {
-						s.logger.Errorf("Restore error getting storage: %v", err)
-						return
-					}
-					f, err := os.OpenFile(s.settings.FileStoragePath, os.O_CREATE|os.O_WRONLY, 0644)
-					if err != nil {
-						s.logger.Errorf("Restore error opening file: %v", err)
-						return
-					}
-					defer f.Close()
-					_, err = f.Write(b)
-					if err != nil {
-						s.logger.Errorf("Restore error writing file: %v", err)
-						return
-					}
-				}()
+				s.restore()
 				s.logger.Info("Restore was finished")
 			}
 		}
 	}
 }
 
+func (s *HTTPServer) restore() {
+	func() {
+		b, err := s.storage.ToJSON()
+		if err != nil {
+			s.logger.Errorf("Restore error getting storage: %v", err)
+			return
+		}
+		f, err := os.OpenFile(s.settings.FileStoragePath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			s.logger.Errorf("Restore error opening file: %v", err)
+			return
+		}
+		defer f.Close()
+		_, err = f.Write(b)
+		if err != nil {
+			s.logger.Errorf("Restore error writing file: %v", err)
+			return
+		}
+	}()
+}
+
 func (s *HTTPServer) Run() {
 	s.logger.Infof("Server was started. Listening on: %s", s.settings.Endpoint)
+
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
 			s.logger.Errorf("Server error: %v", err)
 			os.Exit(1)
 		}
 	}()
+
 	if s.settings.Restore {
 		s.wg.Add(1)
-		go s.restore()
+		go s.restoreProcess()
 	}
 
 	<-s.ctx.Done()

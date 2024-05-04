@@ -61,7 +61,7 @@ func (a *Agent) Run() {
 	ms := &runtime.MemStats{}
 	a.mp = metric.PrepareMetrics(ms)
 	a.wg.Add(1)
-	go a.pollMetric(ms)
+	go a.pollMetricProcess(ms)
 	a.wg.Add(1)
 	go a.postMetrics()
 	a.logger.Info("agent was started.")
@@ -72,6 +72,7 @@ func (a *Agent) Run() {
 func (a *Agent) postMetrics() {
 	defer a.wg.Done()
 	t := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -168,9 +169,10 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 	return nil
 }
 
-func (a *Agent) pollMetric(ms *runtime.MemStats) {
+func (a *Agent) pollMetricProcess(ms *runtime.MemStats) {
 	defer a.wg.Done()
-	ticker := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
+	t := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -178,19 +180,19 @@ func (a *Agent) pollMetric(ms *runtime.MemStats) {
 				a.logger.Info("poll metrics was stopped")
 				return
 			}
-		case <-ticker.C:
+		case <-t.C:
 			{
-				// Обертка сделана для того, чтобы можно было корректно сбросить mutex
-				func() {
-					a.mu.Lock()
-					defer a.logger.Info("update metrics")
-					defer a.mu.Unlock()
-					metric.UpdateMetrics(ms, a.mp)
-				}()
-
+				a.pollMetric(ms)
 			}
 		}
 	}
+}
+
+func (a *Agent) pollMetric(ms *runtime.MemStats) {
+	a.mu.Lock()
+	defer a.logger.Info("update metrics")
+	defer a.mu.Unlock()
+	metric.UpdateMetrics(ms, a.mp)
 }
 
 func (a *Agent) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {

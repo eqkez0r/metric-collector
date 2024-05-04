@@ -9,7 +9,7 @@ import (
 func Logger(
 	logger *zap.SugaredLogger,
 ) gin.HandlerFunc {
-	logFn := func(context *gin.Context) {
+	return func(context *gin.Context) {
 
 		start := time.Now()
 
@@ -39,7 +39,6 @@ func Logger(
 			"DURATION", duration,
 		)
 	}
-	return gin.HandlerFunc(logFn)
 }
 
 type (
