@@ -5,6 +5,7 @@ import (
 	"github.com/Eqke/metric-collector/internal/config"
 	httpserver "github.com/Eqke/metric-collector/internal/server"
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"log"
 	"os"
@@ -18,12 +19,15 @@ func main() {
 		log.Fatal(err)
 	}
 	sugLog := logger.Sugar()
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
 	settings, err := config.NewServerConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	storage := localstorage.New(sugLog)
 	if settings.Restore {
 		if err = storage.FromFile(settings.FileStoragePath); os.IsNotExist(err) {
@@ -35,9 +39,19 @@ func main() {
 
 	}
 	sugLog.Infof("Successful read from file")
-	server := httpserver.New(ctx, settings, storage, sugLog)
+
+	var conn *pgx.Conn = nil
+	if settings.DatabaseDSN != "" {
+		conn, err = pgx.Connect(ctx, settings.DatabaseDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer conn.Close(ctx)
+	}
+
+	server := httpserver.New(ctx, settings, storage, sugLog, conn)
 	server.Run()
-	server.Shutdown()
+	defer server.Shutdown()
 }
 
 func creatingStorageFile(

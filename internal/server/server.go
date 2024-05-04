@@ -7,6 +7,7 @@ import (
 	"github.com/Eqke/metric-collector/internal/server/middleware"
 	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -28,7 +29,8 @@ func New(
 	ctx context.Context,
 	s *config.ServerConfig,
 	storage stor.Storage,
-	logger *zap.SugaredLogger) *HTTPServer {
+	logger *zap.SugaredLogger,
+	conn *pgx.Conn) *HTTPServer {
 
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
@@ -37,6 +39,7 @@ func New(
 	r.Use(middleware.Logger(logger), middleware.Gzip(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
+	r.GET("/ping", h.Ping(logger, conn))
 	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
 	r.POST("/update", h.POSTMetricJSONHandler(logger, storage))
 	r.POST("/value", h.GetMetricJSONHandler(logger, storage))
