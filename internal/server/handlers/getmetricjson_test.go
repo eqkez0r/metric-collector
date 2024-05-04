@@ -13,11 +13,11 @@ func TestGetMetricJSONHandler(t *testing.T) {
 		logger *zap.SugaredLogger
 		s      storage.Storage
 	}
-	var tests []struct {
+	tests := []struct {
 		name string
 		args args
 		want gin.HandlerFunc
-	}
+	}{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, GetMetricJSONHandler(tt.args.logger, tt.args.s), "GetMetricJSONHandler(%v, %v)", tt.args.logger, tt.args.s)
