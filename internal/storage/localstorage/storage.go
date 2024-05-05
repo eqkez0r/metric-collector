@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	store "github.com/Eqke/metric-collector/internal/storage"
+	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"go.uber.org/zap"
 	"os"
@@ -139,7 +140,7 @@ func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
 	default:
 		{
 			s.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
-			return "", store.ErrIsUnknownType
+			return "", e.WrapError(store.ErrPointGetValue, store.ErrIsUnknownType)
 		}
 	}
 
@@ -155,7 +156,7 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			var val metric.Counter
 			var ok bool
 			if val, ok = s.storage.CounterMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
+				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			delta := int64(val)
@@ -170,7 +171,7 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			var val metric.Gauge
 			var ok bool
 			if val, ok = s.storage.GaugeMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
+				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			value := float64(val)
@@ -182,8 +183,8 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 		}
 	default:
 		{
-			s.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
-			return met, store.ErrIsUnknownType
+			s.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
+			return met, e.WrapError(store.ErrPointGetValue, store.ErrIsUnknownType)
 		}
 	}
 	return met, nil
