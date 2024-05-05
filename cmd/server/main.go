@@ -5,7 +5,7 @@ import (
 	"github.com/Eqke/metric-collector/internal/config"
 	httpserver "github.com/Eqke/metric-collector/internal/server"
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
-	"github.com/jackc/pgx/v5"
+	"github.com/Eqke/metric-collector/internal/storagemanager"
 	"go.uber.org/zap"
 	"log"
 	"os"
@@ -28,28 +28,36 @@ func main() {
 		log.Fatal(err)
 	}
 
-	storage := localstorage.New(sugLog)
-	if settings.Restore {
-		if err = storage.FromFile(settings.FileStoragePath); os.IsNotExist(err) {
-			err = creatingStorageFile(settings, storage, sugLog)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
+	//storage := localstorage.New(sugLog)
+	//if settings.Restore {
+	//	if err = storage.FromFile(settings.FileStoragePath); os.IsNotExist(err) {
+	//		err = creatingStorageFile(settings, storage, sugLog)
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
+	//	}
+	//
+	//}
+	//sugLog.Infof("Successful read from file")
+	//
+	//
+	//if settings.DatabaseDSN != "" {
+	//	conn, err = pgx.Connect(ctx, settings.DatabaseDSN)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//	defer conn.Close(ctx)
+	//}
 
+	storage, err := storagemanager.GetStorage(ctx, sugLog, settings)
+	if err != nil {
+		log.Fatal(err)
 	}
-	sugLog.Infof("Successful read from file")
 
-	var conn *pgx.Conn = nil
-	if settings.DatabaseDSN != "" {
-		conn, err = pgx.Connect(ctx, settings.DatabaseDSN)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer conn.Close(ctx)
+	server, err := httpserver.New(ctx, settings, storage, sugLog)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	server := httpserver.New(ctx, settings, storage, sugLog, conn)
 	server.Run()
 	defer server.Shutdown()
 }

@@ -23,18 +23,30 @@ type HTTPServer struct {
 	logger   *zap.SugaredLogger
 	wg       sync.WaitGroup
 	storage  stor.Storage
+	conn     *pgx.Conn
 }
 
 func New(
 	ctx context.Context,
 	s *config.ServerConfig,
 	storage stor.Storage,
-	logger *zap.SugaredLogger,
-	conn *pgx.Conn) *HTTPServer {
+	logger *zap.SugaredLogger) (*HTTPServer, error) {
 
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	var conn *pgx.Conn = nil
+	var err error
+
+	if s.DatabaseDSN != "" {
+		conn, err = pgx.Connect(ctx, s.DatabaseDSN)
+		if err != nil {
+			logger.Infof("Database connection error: %v", err)
+			return nil, err
+		}
+	}
+
+	logger.Infof("Server initing with %s storage", storage.Type())
 
 	r.Use(middleware.Logger(logger), middleware.Gzip(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
@@ -55,7 +67,7 @@ func New(
 		logger:   logger,
 		wg:       sync.WaitGroup{},
 		storage:  storage,
-	}
+	}, nil
 }
 
 func (s *HTTPServer) restoreProcess() {
@@ -111,7 +123,7 @@ func (s *HTTPServer) Run() {
 		}
 	}()
 
-	if s.settings.Restore {
+	if s.settings.Restore && s.settings.DatabaseDSN == "" {
 		s.wg.Add(1)
 		go s.restoreProcess()
 	}
@@ -122,6 +134,9 @@ func (s *HTTPServer) Run() {
 
 func (s *HTTPServer) Shutdown() {
 	s.logger.Infof("Server was stopped.")
+	if err := s.conn.Close(s.ctx); err != nil {
+		s.logger.Errorf("Utilization data storage error: %v", err)
+	}
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
 		s.logger.Errorf("Server shutdown error: %v", err)

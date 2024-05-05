@@ -4,6 +4,7 @@ import (
 	"flag"
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/ilyakaznacheev/cleanenv"
+	"log"
 	"os"
 )
 
@@ -26,7 +27,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	flag.IntVar(&cfg.StoreInterval, "i", defaultStoreInterval, "store interval in seconds")
 	flag.StringVar(&cfg.FileStoragePath, "f", defaultStorePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", defaultRestoreVal, "restore")
-	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database DSN")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "Database DSN")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
@@ -36,5 +37,6 @@ func NewServerConfig() (*ServerConfig, error) {
 	if err != nil {
 		return nil, e.WrapError(errPointNewServerConfig, err)
 	}
+	log.Println(cfg)
 	return cfg, nil
 }

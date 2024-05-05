@@ -1,0 +1,53 @@
+
+
+services:
+  builder:
+    build:
+      context: .
+      target: builder
+
+  server_img:
+    build:
+      context: .
+      target: server_runner
+
+  agent_img:
+    build:
+      context: .
+      target: agent_runner
+
+  server:
+    image: metric-collector:server
+    container_name: metric-collector
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgresql
+    networks:
+      - ps
+
+  postgresql:
+    image: postgres:16-alpine
+    container_name: mc-psql
+    environment:
+      - POSTGRES_DB=metric-collector
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - ps
+
+  agent:
+    image: metric-collector:agent
+    container_name: metric-collector:agent
+    ports:
+      - "8080:8080"
+    networks:
+      - ps
+
+
+networks:
+  ps:
