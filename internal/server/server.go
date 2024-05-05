@@ -67,6 +67,7 @@ func New(
 		logger:   logger,
 		wg:       sync.WaitGroup{},
 		storage:  storage,
+		conn:     conn,
 	}, nil
 }
 
