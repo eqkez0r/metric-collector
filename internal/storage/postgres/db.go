@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	store "github.com/Eqke/metric-collector/internal/storage"
-	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -70,7 +69,7 @@ func (P *PSQLStorage) SetValue(metricType, name, value string) error {
 			_, err := P.conn.Exec(P.ctx, querySetCounter, name, value)
 			if err != nil {
 				P.logger.Errorf("Database exec error: %v", err)
-				return e.WrapError(store.ErrPointSetValue, err)
+				return err
 			}
 		}
 	case metric.TypeGauge.String():
@@ -78,13 +77,13 @@ func (P *PSQLStorage) SetValue(metricType, name, value string) error {
 			_, err := P.conn.Exec(P.ctx, querySetGauge, name, value)
 			if err != nil {
 				P.logger.Errorf("Database exec error: %v", err)
-				return e.WrapError(store.ErrPointSetValue, err)
+				return err
 			}
 		}
 	default:
 		{
 			P.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
-			return e.WrapError(store.ErrPointSetValue, store.ErrIsUnknownType)
+			return store.ErrIsUnknownType
 
 		}
 	}
@@ -101,7 +100,7 @@ func (P *PSQLStorage) SetMetric(m metric.Metrics) error {
 			_, err := P.conn.Exec(P.ctx, querySetCounter, m.ID, m.Delta)
 			if err != nil {
 				P.logger.Errorf("Database exec error: %v", err)
-				return e.WrapError(store.ErrPointSetValue, err)
+				return err
 			}
 		}
 	case metric.TypeGauge.String():
@@ -109,14 +108,13 @@ func (P *PSQLStorage) SetMetric(m metric.Metrics) error {
 			_, err := P.conn.Exec(P.ctx, querySetGauge, m.ID, m.Value)
 			if err != nil {
 				P.logger.Errorf("Database exec error: %v", err)
-				return e.WrapError(store.ErrPointSetValue, err)
+				return err
 			}
 		}
 	default:
 		{
 			P.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
-			return e.WrapError(store.ErrPointSetValue, store.ErrIsUnknownType)
-
+			return store.ErrIsUnknownType
 		}
 	}
 	return nil
@@ -130,7 +128,7 @@ func (P *PSQLStorage) GetValue(metricType, name string) (string, error) {
 			var value string
 			if err := row.Scan(&value); err != nil {
 				P.logger.Errorf("Database scan error: %v", err)
-				return "", e.WrapError(store.ErrPointGetValue, err)
+				return "", err
 			}
 			return value, nil
 		}
@@ -140,14 +138,14 @@ func (P *PSQLStorage) GetValue(metricType, name string) (string, error) {
 			var value string
 			if err := row.Scan(&value); err != nil {
 				P.logger.Errorf("Database scan error: %v", err)
-				return "", e.WrapError(store.ErrPointGetValue, err)
+				return "", err
 			}
 			return value, nil
 		}
 	default:
 		{
 			P.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
-			return "", e.WrapError(store.ErrPointGetValue, store.ErrIsUnknownType)
+			return "", store.ErrIsUnknownType
 		}
 	}
 }
@@ -158,14 +156,14 @@ func (P *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	rows, err := P.conn.Query(P.ctx, queryCreateCounters)
 	if err != nil {
 		P.logger.Errorf("Database query error: %v", err)
-		return nil, e.WrapError(store.ErrPointGetMetrics, err)
+		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
 		if err = rows.Scan(m.Name, m.Value); err != nil {
 			P.logger.Errorf("Database scan error: %v", err)
-			return nil, e.WrapError(store.ErrPointGetMetrics, err)
+			return nil, err
 		}
 		metrics = append(metrics, m)
 	}
@@ -173,14 +171,14 @@ func (P *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	rows, err = P.conn.Query(P.ctx, queryCreateGauges)
 	if err != nil {
 		P.logger.Errorf("Database query error: %v", err)
-		return nil, e.WrapError(store.ErrPointGetMetrics, err)
+		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
 		if err = rows.Scan(m.Name, m.Value); err != nil {
 			P.logger.Errorf("Database scan error: %v", err)
-			return nil, e.WrapError(store.ErrPointGetMetrics, err)
+			return nil, err
 		}
 		metrics = append(metrics, m)
 	}
@@ -198,7 +196,7 @@ func (P *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			err := P.conn.QueryRow(P.ctx, queryGetCounter, m.ID).Scan(&val)
 			if err != nil {
 				P.logger.Errorf("Database scan error: %v", err)
-				return met, e.WrapError(store.ErrPointGetMetric, err)
+				return met, err
 			}
 		}
 	case metric.TypeGauge.String():
@@ -207,13 +205,13 @@ func (P *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			err := P.conn.QueryRow(P.ctx, queryGetGauge, m.ID).Scan(&val)
 			if err != nil {
 				P.logger.Errorf("Database scan error: %v", err)
-				return met, e.WrapError(store.ErrPointGetMetric, err)
+				return met, err
 			}
 		}
 	default:
 		{
 			P.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
-			return met, e.WrapError(store.ErrPointGetMetric, store.ErrIsUnknownType)
+			return met, store.ErrIsUnknownType
 		}
 	}
 	return met, nil
