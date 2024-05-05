@@ -135,8 +135,10 @@ func (s *HTTPServer) Run() {
 
 func (s *HTTPServer) Shutdown() {
 	s.logger.Infof("Server was stopped.")
-	if err := s.conn.Close(s.ctx); err != nil {
-		s.logger.Errorf("Utilization data storage error: %v", err)
+	if s.conn != nil {
+		if err := s.conn.Close(s.ctx); err != nil {
+			s.logger.Errorf("Utilization data storage error: %v", err)
+		}
 	}
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
