@@ -30,7 +30,6 @@ func GetMetricJSONHandler(
 			context.Status(http.StatusBadRequest)
 			return
 		}
-		logger.Infof("metric get request with type: %s, name: %s", m.MType, m.ID)
 		if m.ID == "" {
 			logger.Errorf("%s: empty metric name", errPointGetMetricJSON)
 			context.Status(http.StatusNotFound)
