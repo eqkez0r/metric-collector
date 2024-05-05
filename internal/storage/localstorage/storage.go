@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	TYPE = "Local mem storage"
+	TYPE = "Local mem database"
 )
 
 type LocalStorage struct {
@@ -53,7 +53,7 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 			metricValueInt, err := strconv.Atoi(value)
 			if err != nil {
 				s.logger.Error(store.ErrPointSetValue, err)
-				return err
+				return e.WrapError(store.ErrPointSetValue, err)
 			}
 			s.storage.CounterMetrics[name] += metric.Counter(metricValueInt)
 		}
@@ -62,14 +62,14 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 			metricGauge, err := strconv.ParseFloat(value, 64)
 			if err != nil {
 				s.logger.Error(store.ErrPointSetValue, err)
-				return err
+				return e.WrapError(store.ErrPointSetValue, err)
 			}
 			s.storage.GaugeMetrics[name] = metric.Gauge(metricGauge)
 		}
 	default:
 		{
 			s.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
-			return store.ErrIsUnknownType
+			return e.WrapError(store.ErrPointSetValue, store.ErrIsUnknownType)
 
 		}
 	}
@@ -82,7 +82,7 @@ func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if m.ID == "" {
-		s.logger.Error(store.ErrPointSetValue, store.ErrIDIsEmpty)
+		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
 		return store.ErrIDIsEmpty
 	}
 
@@ -90,7 +90,7 @@ func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 	case metric.TypeCounter.String():
 		{
 			if m.Delta == nil {
-				s.logger.Error(store.ErrPointSetValue, store.ErrValueIsEmpty)
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
 				return store.ErrValueIsEmpty
 			}
 			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
@@ -98,7 +98,7 @@ func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 	case metric.TypeGauge.String():
 		{
 			if m.Value == nil {
-				s.logger.Error(store.ErrPointSetValue, store.ErrValueIsEmpty)
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
 				return store.ErrValueIsEmpty
 			}
 			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
@@ -156,7 +156,7 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			var val metric.Counter
 			var ok bool
 			if val, ok = s.storage.CounterMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
+				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			delta := int64(val)
@@ -171,7 +171,7 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			var val metric.Gauge
 			var ok bool
 			if val, ok = s.storage.GaugeMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
+				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			value := float64(val)
@@ -183,8 +183,8 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 		}
 	default:
 		{
-			s.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
-			return met, e.WrapError(store.ErrPointGetValue, store.ErrIsUnknownType)
+			s.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
+			return met, e.WrapError(store.ErrPointGetMetric, store.ErrIsUnknownType)
 		}
 	}
 	return met, nil

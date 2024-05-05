@@ -12,6 +12,7 @@ var (
 	ErrValueIsEmpty        = errors.New("metric value is empty")
 
 	ErrPointSetValue          = "error in storage.SetValue(): "
+	ErrPointSetMetric         = "error in storage.SetMetric(): "
 	ErrPointGetValue          = "error in storage.GetValue(): "
 	ErrPointGetMetrics        = "error in storage.GetMetrics(): "
 	ErrPointGetMetric         = "error in storage.GetMetric(): "
