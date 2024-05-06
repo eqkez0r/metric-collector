@@ -211,6 +211,18 @@ func (s *LocalStorage) GetMetrics() ([]store.Metric, error) {
 	return metrics, nil
 }
 
+func (s *LocalStorage) SetMetrics(metrics []metric.Metrics) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range metrics {
+		err := s.SetMetric(m)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *LocalStorage) ToJSON() ([]byte, error) {
 	return json.MarshalIndent(s.storage, "", "  ")
 }

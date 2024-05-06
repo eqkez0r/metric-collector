@@ -62,122 +62,132 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 	}, nil
 }
 
-func (P *PSQLStorage) SetValue(metricType, name, value string) error {
+func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			_, err := P.conn.Exec(P.ctx, querySetCounter, name, value)
+			_, err := p.conn.Exec(p.ctx, querySetCounter, name, value)
 			if err != nil {
-				P.logger.Errorf("Database exec error: %v", err)
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
-			_, err := P.conn.Exec(P.ctx, querySetGauge, name, value)
+			_, err := p.conn.Exec(p.ctx, querySetGauge, name, value)
 			if err != nil {
-				P.logger.Errorf("Database exec error: %v", err)
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	default:
 		{
-			P.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
+			p.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
 			return store.ErrIsUnknownType
 
 		}
 	}
-	P.logger.Infof("metric was saved with type: %s, name: %s, value: %s",
+	p.logger.Infof("metric was saved with type: %s, name: %s, value: %s",
 		metricType, name, value)
 
 	return nil
 }
 
-func (P *PSQLStorage) SetMetric(m metric.Metrics) error {
+func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			_, err := P.conn.Exec(P.ctx, querySetCounter, m.ID, m.Delta)
+			_, err := p.conn.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
 			if err != nil {
-				P.logger.Errorf("Database exec error: %v", err)
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
-			_, err := P.conn.Exec(P.ctx, querySetGauge, m.ID, m.Value)
+			_, err := p.conn.Exec(p.ctx, querySetGauge, m.ID, m.Value)
 			if err != nil {
-				P.logger.Errorf("Database exec error: %v", err)
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	default:
 		{
-			P.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
+			p.logger.Error(store.ErrPointSetValue, store.ErrIsUnknownType)
 			return store.ErrIsUnknownType
 		}
 	}
 	return nil
 }
 
-func (P *PSQLStorage) GetValue(metricType, name string) (string, error) {
+func (p *PSQLStorage) SetMetrics(m []metric.Metrics) error {
+	for _, v := range m {
+		err := p.SetMetric(v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			row := P.conn.QueryRow(P.ctx, queryGetCounter, name)
+			row := p.conn.QueryRow(p.ctx, queryGetCounter, name)
 			var value string
 			if err := row.Scan(&value); err != nil {
-				P.logger.Errorf("Database scan error: %v", err)
+				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
 			return value, nil
 		}
 	case metric.TypeGauge.String():
 		{
-			row := P.conn.QueryRow(P.ctx, queryGetGauge, name)
+			row := p.conn.QueryRow(p.ctx, queryGetGauge, name)
 			var value string
 			if err := row.Scan(&value); err != nil {
-				P.logger.Errorf("Database scan error: %v", err)
+				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
 			return value, nil
 		}
 	default:
 		{
-			P.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
+			p.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
 			return "", store.ErrIsUnknownType
 		}
 	}
 }
 
-func (P *PSQLStorage) GetMetrics() ([]store.Metric, error) {
+func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	metrics := make([]store.Metric, 0)
 
-	rows, err := P.conn.Query(P.ctx, queryCreateCounters)
+	rows, err := p.conn.Query(p.ctx, queryCreateCounters)
 	if err != nil {
-		P.logger.Errorf("Database query error: %v", err)
+		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
 		if err = rows.Scan(m.Name, m.Value); err != nil {
-			P.logger.Errorf("Database scan error: %v", err)
+			p.logger.Errorf("Database scan error: %v", err)
 			return nil, err
 		}
 		metrics = append(metrics, m)
 	}
 
-	rows, err = P.conn.Query(P.ctx, queryCreateGauges)
+	rows, err = p.conn.Query(p.ctx, queryCreateGauges)
 	if err != nil {
-		P.logger.Errorf("Database query error: %v", err)
+		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
 		if err = rows.Scan(m.Name, m.Value); err != nil {
-			P.logger.Errorf("Database scan error: %v", err)
+			p.logger.Errorf("Database scan error: %v", err)
 			return nil, err
 		}
 		metrics = append(metrics, m)
@@ -186,57 +196,57 @@ func (P *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	return metrics, nil
 }
 
-func (P *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
+func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 
 	var met metric.Metrics
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
 			var val metric.Counter
-			err := P.conn.QueryRow(P.ctx, queryGetCounter, m.ID).Scan(&val)
+			err := p.conn.QueryRow(p.ctx, queryGetCounter, m.ID).Scan(&val)
 			if err != nil {
-				P.logger.Errorf("Database scan error: %v", err)
+				p.logger.Errorf("Database scan error: %v", err)
 				return met, err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
 			var val metric.Gauge
-			err := P.conn.QueryRow(P.ctx, queryGetGauge, m.ID).Scan(&val)
+			err := p.conn.QueryRow(p.ctx, queryGetGauge, m.ID).Scan(&val)
 			if err != nil {
-				P.logger.Errorf("Database scan error: %v", err)
+				p.logger.Errorf("Database scan error: %v", err)
 				return met, err
 			}
 		}
 	default:
 		{
-			P.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
+			p.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
 			return met, store.ErrIsUnknownType
 		}
 	}
 	return met, nil
 }
 
-func (P *PSQLStorage) ToJSON() ([]byte, error) {
+func (p *PSQLStorage) ToJSON() ([]byte, error) {
 	return nil, nil
 }
 
-func (P *PSQLStorage) FromJSON(bytes []byte) error {
+func (p *PSQLStorage) FromJSON(bytes []byte) error {
 	return nil
 }
 
-func (P *PSQLStorage) ToFile(s string) error {
+func (p *PSQLStorage) ToFile(s string) error {
 	return nil
 }
 
-func (P *PSQLStorage) FromFile(s string) error {
+func (p *PSQLStorage) FromFile(s string) error {
 	return nil
 }
 
-func (P *PSQLStorage) Close() error {
-	return P.conn.Close(context.Background())
+func (p *PSQLStorage) Close() error {
+	return p.conn.Close(context.Background())
 }
 
-func (P *PSQLStorage) Type() string {
+func (p *PSQLStorage) Type() string {
 	return TYPE
 }

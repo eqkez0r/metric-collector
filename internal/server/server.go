@@ -55,6 +55,7 @@ func New(
 	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
 	r.POST("/update", h.POSTMetricJSONHandler(logger, storage))
 	r.POST("/value", h.GetMetricJSONHandler(logger, storage))
+	r.POST("/updates", h.PostMetricUpdates(logger, storage))
 
 	return &HTTPServer{
 		server: &http.Server{

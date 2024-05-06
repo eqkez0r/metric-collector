@@ -26,6 +26,8 @@ const (
 	typeCounter     = "counter"
 
 	errPointPostMetrics = "error in agent.postMetrics(): "
+
+	updatesEndpoint = "/updates"
 )
 
 var (
@@ -95,11 +97,16 @@ func (a *Agent) postMetrics() {
 						if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
-
 						if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
 							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 						}
 					}
+				}
+				if err := a.pollMetricByBatch(); err != nil {
+					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				}
+				if err := a.pollEncodedMetricByBatch(); err != nil {
+					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 				}
 			}
 		}
@@ -169,6 +176,109 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 	return nil
 }
 
+func (a *Agent) pollMetricByBatch() error {
+	arr := []metric.Metrics{}
+	for k, v := range a.mp {
+		switch k {
+		case metric.TypeGauge:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseFloat(metricValue, 64)
+					if err != nil {
+						a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Value: &val}
+					arr = append(arr, met)
+				}
+			}
+		case metric.TypeCounter:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseInt(metricValue, 10, 64)
+					if err != nil {
+						a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Delta: &val}
+					arr = append(arr, met)
+				}
+			}
+		}
+	}
+	if len(arr) == 0 {
+		return nil
+	}
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(arr).
+		Post(a.getEndpointToBatchMetric())
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+		a.getEndpointToBatchMetric(), resp.StatusCode(), resp.Size())
+	return nil
+}
+
+func (a *Agent) pollEncodedMetricByBatch() error {
+	arr := []metric.Metrics{}
+	for k, v := range a.mp {
+		switch k {
+		case metric.TypeGauge:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseFloat(metricValue, 64)
+					if err != nil {
+						a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Value: &val}
+					arr = append(arr, met)
+				}
+			}
+		case metric.TypeCounter:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseInt(metricValue, 10, 64)
+					if err != nil {
+						a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Delta: &val}
+					arr = append(arr, met)
+				}
+			}
+		}
+	}
+	if len(arr) == 0 {
+		return nil
+	}
+	b, err := json.Marshal(arr)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	encoded, err := a.compress(b)
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(encoded).
+		Post(a.getEndpointToBatchMetric())
+	if err != nil {
+		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+		return err
+	}
+	a.logger.Infof("endpoint: %s, status_code: %d, size: %d",
+		a.getEndpointToBatchMetric(), resp.StatusCode(), resp.Size())
+	return nil
+}
+
 func (a *Agent) pollMetricProcess(ms *runtime.MemStats) {
 	defer a.wg.Done()
 	t := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
@@ -201,6 +311,10 @@ func (a *Agent) getEndpointToUsualMetric(metricType, metricName, metricValue str
 
 func (a *Agent) getEndpointToJSONMetric() string {
 	return strings.Join([]string{"http:/", a.settings.AgentEndpoint, "update"}, "/")
+}
+
+func (a *Agent) getEndpointToBatchMetric() string {
+	return strings.Join([]string{"http:/", a.settings.AgentEndpoint, "updates"}, "/")
 }
 
 func (a *Agent) prepareJSONMetric(metricName, metricType, metricValue string) ([]byte, error) {

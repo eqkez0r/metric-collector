@@ -7,8 +7,11 @@ import (
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
 	"github.com/Eqke/metric-collector/internal/storage/postgres"
 	"go.uber.org/zap"
-	"log"
 	"os"
+)
+
+const (
+	ErrPointGetStorage = "error in storagemanager.GetStorage(): "
 )
 
 func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.ServerConfig) (stor.Storage, error) {
@@ -20,7 +23,12 @@ func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.Serv
 		if err := storage.FromFile(cfg.FileStoragePath); os.IsNotExist(err) {
 			err = creatingStorageFile(cfg, storage, logger)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatalf("%v: %v", ErrPointGetStorage, err)
+			}
+		} else {
+			err = storage.FromFile(cfg.FileStoragePath)
+			if err != nil {
+				logger.Fatalf("%v: %v", ErrPointGetStorage, err)
 			}
 		}
 	}

@@ -38,6 +38,7 @@ type Storage interface {
 	GetValue(string, string) (string, error)
 	GetMetrics() ([]Metric, error)
 	GetMetric(metric.Metrics) (metric.Metrics, error)
+	SetMetrics([]metric.Metrics) error
 	ToJSON() ([]byte, error)
 	FromJSON([]byte) error
 	ToFile(string) error
