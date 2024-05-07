@@ -81,32 +81,8 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 func (s *LocalStorage) SetMetric(m metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if m.ID == "" {
-		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
-		return store.ErrIDIsEmpty
-	}
 
-	switch m.MType {
-	case metric.TypeCounter.String():
-		{
-			if m.Delta == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
-				return store.ErrValueIsEmpty
-			}
-			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
-		}
-	case metric.TypeGauge.String():
-		{
-			if m.Value == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
-				return store.ErrValueIsEmpty
-			}
-			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
-		}
-	}
-	s.logger.Infof("metric was saved with type: %s, name: %s",
-		m.MType, m.ID)
-	return nil
+	return s.setMetric(m)
 }
 
 func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
@@ -215,9 +191,36 @@ func (s *LocalStorage) SetMetrics(metrics []metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, m := range metrics {
-		err := s.SetMetric(m)
+		err := s.setMetric(m)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (s *LocalStorage) setMetric(m metric.Metrics) error {
+	if m.ID == "" {
+		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
+		return store.ErrIDIsEmpty
+	}
+
+	switch m.MType {
+	case metric.TypeCounter.String():
+		{
+			if m.Delta == nil {
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
+			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
+		}
+	case metric.TypeGauge.String():
+		{
+			if m.Value == nil {
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
+			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
 		}
 	}
 	return nil
