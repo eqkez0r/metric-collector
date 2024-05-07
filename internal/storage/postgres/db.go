@@ -21,7 +21,7 @@ const (
 
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1`
 	queryGetAllCounter = `SELECT name, value FROM counters`
-	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
+	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = value + $2`
 )
 
 type PSQLStorage struct {
@@ -165,7 +165,7 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	metrics := make([]store.Metric, 0)
 
-	rows, err := p.conn.Query(p.ctx, queryCreateCounters)
+	rows, err := p.conn.Query(p.ctx, queryGetAllGauge)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
