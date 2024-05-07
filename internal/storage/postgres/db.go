@@ -197,7 +197,7 @@ func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 }
 
 func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
-
+	p.logger.Infof("get metric %v", m)
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
