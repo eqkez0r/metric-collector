@@ -15,11 +15,13 @@ const (
 	queryCreateGauges   = `CREATE TABLE IF NOT EXISTS gauges(name text primary key, value double precision)`
 	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value int)`
 
-	queryGetGauge = `SELECT value FROM gauges WHERE name = $1`
-	querySetGauge = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
+	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1`
+	queryGetAllGauge = `Select name, value FROM gauges`
+	querySetGauge    = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 
-	queryGetCounter = `SELECT value FROM counters WHERE name = $1`
-	querySetCounter = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
+	queryGetCounter    = `SELECT value FROM counters WHERE name = $1`
+	queryGetAllCounter = `SELECT name, value FROM counters`
+	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 )
 
 type PSQLStorage struct {
@@ -163,7 +165,7 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 	metrics := make([]store.Metric, 0)
 
-	rows, err := p.conn.Query(p.ctx, queryCreateCounters)
+	rows, err := p.conn.Query(p.ctx, queryGetAllGauge)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
@@ -178,7 +180,7 @@ func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 		metrics = append(metrics, m)
 	}
 
-	rows, err = p.conn.Query(p.ctx, queryCreateGauges)
+	rows, err = p.conn.Query(p.ctx, queryGetAllCounter)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
@@ -206,6 +208,7 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
+			p.logger.Infof("delta %v", *m.Delta)
 		}
 	case metric.TypeGauge.String():
 		{
@@ -214,6 +217,7 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
+			p.logger.Infof("value %v", *m.Value)
 		}
 	default:
 		{
