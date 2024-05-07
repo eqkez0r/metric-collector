@@ -19,10 +19,12 @@ tasks:
 
   runServer:
     cmds:
+      - go build -o build/server.exe ./cmd/server
       - ./build/server.exe
 
   runAgent:
     cmds:
+      - go build -o build/agent.exe ./cmd/agent
       - ./build/agent.exe
 
   build:

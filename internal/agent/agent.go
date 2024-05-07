@@ -87,21 +87,21 @@ func (a *Agent) postMetrics() {
 				a.pollCounter++
 				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
 
-				for metricType, metricMap := range a.mp {
-					for metricName, metricValue := range metricMap {
-						a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
-							metricType, metricName, metricValue)
-						//if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-						//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-						//}
-						if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-						}
-						if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-							a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-						}
-					}
-				}
+				//for metricType, metricMap := range a.mp {
+				//	for metricName, metricValue := range metricMap {
+				//		a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
+				//			metricType, metricName, metricValue)
+				//		//if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				//		//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				//		//}
+				//		if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				//			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				//		}
+				//		if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				//			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				//		}
+				//	}
+				//}
 				if err := a.pollMetricByBatch(); err != nil {
 					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 				}
