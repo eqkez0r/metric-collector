@@ -16,11 +16,11 @@ const (
 	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value int)`
 
 	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1`
-	queryGetAllGauge = `SELECT * FROM gauges`
+	queryGetAllGauge = `SELECT name, value FROM gauges`
 	querySetGauge    = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1`
-	queryGetAllCounter = `SELECT * FROM counters`
+	queryGetAllCounter = `SELECT name, value FROM counters`
 	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = value + $2`
 )
 
