@@ -99,7 +99,7 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			_, err := p.conn.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
+			_, err := p.conn.Exec(p.ctx, querySetCounter, m.ID, *m.Delta)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
@@ -107,7 +107,7 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 		}
 	case metric.TypeGauge.String():
 		{
-			_, err := p.conn.Exec(p.ctx, querySetGauge, m.ID, m.Value)
+			_, err := p.conn.Exec(p.ctx, querySetGauge, m.ID, *m.Value)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
