@@ -84,33 +84,45 @@ func (a *Agent) postMetrics() {
 			}
 		case <-t.C:
 			{
-				a.pollCounter++
-				a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
+				a.updCounter()
 
-				//for metricType, metricMap := range a.mp {
-				//	for metricName, metricValue := range metricMap {
-				//		a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
-				//			metricType, metricName, metricValue)
-				//		//if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-				//		//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-				//		//}
-				//		if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-				//			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-				//		}
-				//		if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
-				//			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-				//		}
-				//	}
-				//}
-				//if err := a.pollMetricByBatch(); err != nil {
-				//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-				//}
+				if err := a.pollMetricByBatch(); err != nil {
+					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				}
 				if err := a.pollEncodedMetricByBatch(); err != nil {
 					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 				}
 			}
 		}
 	}
+}
+
+func (a *Agent) updCounter() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.pollCounter++
+	a.mp[typeCounter][pollCounterName] = strconv.FormatInt(a.pollCounter, 10)
+}
+
+func (a *Agent) pollSingleMetric() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for metricType, metricMap := range a.mp {
+		for metricName, metricValue := range metricMap {
+			a.logger.Infof("sending metric with type: %s, name: %s, value: %s",
+				metricType, metricName, metricValue)
+			if err := a.pollUsualMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+			}
+			if err := a.pollJSONMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+			}
+			if err := a.pollEncodeMetric(metricName.String(), metricType.String(), metricValue); err != nil {
+				a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (a *Agent) pollUsualMetric(metricName, metricType, metricValue string) error {
@@ -177,6 +189,8 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 }
 
 func (a *Agent) pollMetricByBatch() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	arr := []metric.Metrics{}
 	for k, v := range a.mp {
 		switch k {
@@ -223,6 +237,8 @@ func (a *Agent) pollMetricByBatch() error {
 }
 
 func (a *Agent) pollEncodedMetricByBatch() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	arr := []metric.Metrics{}
 	for k, v := range a.mp {
 		switch k {
