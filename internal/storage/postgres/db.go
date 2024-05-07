@@ -16,12 +16,12 @@ const (
 	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value int)`
 
 	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1`
-	queryGetAllGauge = `Select name, value FROM gauges`
+	queryGetAllGauge = `SELECT * FROM gauges`
 	querySetGauge    = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1`
-	queryGetAllCounter = `SELECT name, value FROM counters`
-	querySetCounter    = `UPDATE counters SET value = value + $2 WHERE name = $1`
+	queryGetAllCounter = `SELECT * FROM counters`
+	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = value + $2`
 )
 
 type PSQLStorage struct {
@@ -199,7 +199,7 @@ func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 }
 
 func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
-	p.logger.Infof("get metric %v", m)
+
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
@@ -208,7 +208,7 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
-			p.logger.Infof("delta %v", *m.Delta)
+
 		}
 	case metric.TypeGauge.String():
 		{
@@ -217,7 +217,7 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
-			p.logger.Infof("value %v", *m.Value)
+
 		}
 	default:
 		{
