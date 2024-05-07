@@ -198,33 +198,31 @@ func (p *PSQLStorage) GetMetrics() ([]store.Metric, error) {
 
 func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 
-	var met metric.Metrics
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			var val metric.Counter
-			err := p.conn.QueryRow(p.ctx, queryGetCounter, m.ID).Scan(&val)
+			err := p.conn.QueryRow(p.ctx, queryGetCounter, m.ID).Scan(&m.Delta)
 			if err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
-				return met, err
+				return m, err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
-			var val metric.Gauge
-			err := p.conn.QueryRow(p.ctx, queryGetGauge, m.ID).Scan(&val)
+			err := p.conn.QueryRow(p.ctx, queryGetGauge, m.ID).Scan(&m.Value)
 			if err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
-				return met, err
+				return m, err
 			}
 		}
 	default:
 		{
 			p.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
-			return met, store.ErrIsUnknownType
+			return m, store.ErrIsUnknownType
 		}
 	}
-	return met, nil
+	p.logger.Infof("metric %v", m)
+	return m, nil
 }
 
 func (p *PSQLStorage) ToJSON() ([]byte, error) {

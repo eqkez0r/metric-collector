@@ -102,9 +102,9 @@ func (a *Agent) postMetrics() {
 				//		}
 				//	}
 				//}
-				if err := a.pollMetricByBatch(); err != nil {
-					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
-				}
+				//if err := a.pollMetricByBatch(); err != nil {
+				//	a.logger.Errorf("%s: %v", errPointPostMetrics, err)
+				//}
 				if err := a.pollEncodedMetricByBatch(); err != nil {
 					a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 				}
