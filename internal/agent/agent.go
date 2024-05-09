@@ -51,7 +51,7 @@ func New(
 	settings *config.AgentConfig,
 	logger *zap.SugaredLogger) *Agent {
 	client := resty.New()
-	client.SetRetryCount(2)
+	client.SetRetryCount(3)
 	client.SetRetryWaitTime(1 * time.Second)
 	client.SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
 		return c.RetryWaitTime + 2*time.Duration(r.Request.Attempt)*time.Second, nil
