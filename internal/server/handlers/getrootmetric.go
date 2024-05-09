@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -16,7 +17,13 @@ func GetRootMetricsHandler(
 	storage storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Infof("root metrics handler was called")
-		bytes, err := storage.ToJSON()
+		data, err := storage.GetMetrics()
+		if err != nil {
+			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
+			context.Status(http.StatusInternalServerError)
+			return
+		}
+		bytes, err := json.MarshalIndent(data, "", " ")
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
 			context.Status(http.StatusInternalServerError)

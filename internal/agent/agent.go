@@ -43,17 +43,25 @@ type Agent struct {
 	ctx         context.Context
 	wg          sync.WaitGroup
 	mu          *sync.Mutex
+	attempt     int
 }
 
 func New(
 	ctx context.Context,
 	settings *config.AgentConfig,
 	logger *zap.SugaredLogger) *Agent {
+	client := resty.New()
+	client.SetRetryCount(2)
+	client.SetRetryWaitTime(1 * time.Second)
+	client.SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
+		return c.RetryWaitTime + 2*time.Duration(r.Request.Attempt)*time.Second, nil
+	})
+	client.SetRetryMaxWaitTime(5 * time.Second)
 	return &Agent{
 		ctx:         ctx,
 		logger:      logger,
 		settings:    settings,
-		client:      resty.New(),
+		client:      client,
 		pollCounter: 0,
 	}
 }

@@ -166,23 +166,25 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 	return met, nil
 }
 
-func (s *LocalStorage) GetMetrics() ([]store.Metric, error) {
+func (s *LocalStorage) GetMetrics() (map[string][]store.Metric, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	metrics := make([]store.Metric, 0, len(s.storage.CounterMetrics)+len(s.storage.GaugeMetrics))
+	metrics := make(map[string][]store.Metric, 0)
+	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0)
+	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0)
 	for name := range s.storage.CounterMetrics {
 		m := store.Metric{
 			Name:  name,
 			Value: s.storage.CounterMetrics[name].String(),
 		}
-		metrics = append(metrics, m)
+		metrics[metric.TypeCounter.String()] = append(metrics[metric.TypeCounter.String()], m)
 	}
 	for name := range s.storage.GaugeMetrics {
 		m := store.Metric{
 			Name:  name,
 			Value: s.storage.GaugeMetrics[name].String(),
 		}
-		metrics = append(metrics, m)
+		metrics[metric.TypeGauge.String()] = append(metrics[metric.TypeGauge.String()], m)
 	}
 	return metrics, nil
 }
