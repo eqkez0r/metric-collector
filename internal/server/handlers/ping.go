@@ -10,7 +10,7 @@ import (
 
 func Ping(
 	logger *zap.SugaredLogger,
-	conn *pgxpool.Conn,
+	conn *pgxpool.Pool,
 ) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Info("ping...")

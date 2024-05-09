@@ -8,6 +8,7 @@ import (
 	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -35,11 +36,11 @@ func New(
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	var conn *pgx.Conn = nil
+	var conn *pgxpool.Pool = nil
 	var err error
 
 	if s.DatabaseDSN != "" {
-		conn, err = pgx.Connect(ctx, s.DatabaseDSN)
+		conn, err = pgxpool.New(ctx, s.DatabaseDSN)
 		if err != nil {
 			logger.Infof("Database connection error: %v", err)
 			return nil, err
