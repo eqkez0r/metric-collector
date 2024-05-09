@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -34,7 +35,9 @@ func POSTMetricHandler(
 		metricValue := context.Param("value")
 		logger.Infof("metric was received with type: %s, name: %s, value: %s",
 			metricType, metricName, metricValue)
-		err := s.SetValue(metricType, metricName, metricValue)
+		err := retry.Retry(logger, 3, func() error {
+			return s.SetValue(metricType, metricName, metricValue)
+		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointPostMetric, err)
 			context.Status(http.StatusBadRequest)

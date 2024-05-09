@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/Eqke/metric-collector/internal/storage"
+	store "github.com/Eqke/metric-collector/internal/storage"
+	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -14,10 +15,15 @@ const (
 
 func GetRootMetricsHandler(
 	logger *zap.SugaredLogger,
-	storage storage.Storage) gin.HandlerFunc {
+	storage store.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Infof("root metrics handler was called")
-		data, err := storage.GetMetrics()
+		var data map[string][]store.Metric
+		var err error
+		err = retry.Retry(logger, 3, func() error {
+			data, err = storage.GetMetrics()
+			return err
+		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetRootMetrics, err)
 			context.Status(http.StatusInternalServerError)

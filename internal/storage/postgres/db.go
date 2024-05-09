@@ -88,26 +88,16 @@ func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				_, err := p.db.Exec(p.ctx, querySetCounter, name, value)
-				if err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
+			_, err := p.db.Exec(p.ctx, querySetCounter, name, value)
+			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				_, err := p.db.Exec(p.ctx, querySetGauge, name, value)
-				if err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
+			_, err := p.db.Exec(p.ctx, querySetGauge, name, value)
+			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
@@ -129,26 +119,16 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				_, err := p.db.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
-				if err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
+			_, err := p.db.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
+			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
 	case metric.TypeGauge.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				_, err := p.db.Exec(p.ctx, querySetGauge, m.ID, m.Value)
-				if err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
+			_, err := p.db.Exec(p.ctx, querySetGauge, m.ID, m.Value)
+			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
@@ -178,14 +158,8 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				row = p.db.QueryRow(p.ctx, queryGetCounter, name)
-				if err := row.Scan(&value); err != nil {
-
-					return err
-				}
-				return nil
-			}); err != nil {
+			row = p.db.QueryRow(p.ctx, queryGetCounter, name)
+			if err := row.Scan(&value); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
@@ -193,13 +167,8 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 		}
 	case metric.TypeGauge.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				row = p.db.QueryRow(p.ctx, queryGetGauge, name)
-				if err := row.Scan(&value); err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
+			row = p.db.QueryRow(p.ctx, queryGetGauge, name)
+			if err := row.Scan(&value); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
@@ -218,42 +187,32 @@ func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
 	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0)
 	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0)
 	var rows pgx.Rows
-	if err := retry.Retry(p.logger, 3, func() error {
-		var err error
-		rows, err = p.db.Query(p.ctx, queryGetAllGauge)
-		if err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
+	var err error
+
+	rows, err = p.db.Query(p.ctx, queryGetAllGauge)
+	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
-		if err := rows.Scan(&m.Name, &m.Value); err != nil {
+		if err = rows.Scan(&m.Name, &m.Value); err != nil {
 			p.logger.Errorf("Database scan error: %v", err)
 			return nil, err
 		}
 		metrics[metric.TypeGauge.String()] = append(metrics[metric.TypeGauge.String()], m)
 	}
 
-	if err := retry.Retry(p.logger, 3, func() error {
-		var err error
-		rows, err = p.db.Query(p.ctx, queryGetAllCounter)
-		if err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
+	rows, err = p.db.Query(p.ctx, queryGetAllCounter)
+	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
 	for rows.Next() {
 		var m store.Metric
-		if err := rows.Scan(&m.Name, &m.Value); err != nil {
+		if err = rows.Scan(&m.Name, &m.Value); err != nil {
 			p.logger.Errorf("Database scan error: %v", err)
 			return nil, err
 		}

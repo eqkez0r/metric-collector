@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -18,6 +19,7 @@ func GetMetricJSONHandler(
 	return func(context *gin.Context) {
 
 		var m metric.Metrics
+		var err error
 		ct := context.GetHeader("Content-Type")
 		context.Header("Content-Type", "application/json")
 		if ct != "application/json" {
@@ -25,7 +27,7 @@ func GetMetricJSONHandler(
 			context.Status(http.StatusNotFound)
 			return
 		}
-		if err := context.BindJSON(&m); err != nil {
+		if err = context.BindJSON(&m); err != nil {
 			logger.Errorf("%s: %v", errPointGetMetricJSON, err)
 			context.Status(http.StatusBadRequest)
 			return
@@ -35,13 +37,16 @@ func GetMetricJSONHandler(
 			context.Status(http.StatusNotFound)
 			return
 		}
-		finVal, err := s.GetMetric(m)
+		err = retry.Retry(logger, 3, func() error {
+			m, err = s.GetMetric(m)
+			return err
+		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetMetricJSON, err)
 			context.Status(http.StatusNotFound)
 			return
 		}
 		logger.Infof("metric get success with type: %s, name: %s", m.MType, m.ID)
-		context.JSON(http.StatusOK, finVal)
+		context.JSON(http.StatusOK, m)
 	}
 }

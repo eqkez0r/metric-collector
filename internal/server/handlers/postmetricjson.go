@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -32,7 +33,9 @@ func POSTMetricJSONHandler(
 
 		logger.Info("metric was received", m)
 
-		if err := s.SetMetric(m); err != nil {
+		if err := retry.Retry(logger, 3, func() error {
+			return s.SetMetric(m)
+		}); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			if errors.Is(err, storage.ErrIsUnknownType) {
 				context.Status(http.StatusBadRequest)
