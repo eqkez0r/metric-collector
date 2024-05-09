@@ -15,8 +15,9 @@ func Retry(
 			if err = f(); err == nil {
 				return nil
 			}
-			time.Sleep(time.Second * time.Duration(1+2*attempts))
+			time.Sleep(time.Second * time.Duration(1+2*i))
 		}
+		return err
 	}
 	return nil
 }
