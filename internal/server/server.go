@@ -7,7 +7,6 @@ import (
 	"github.com/Eqke/metric-collector/internal/server/middleware"
 	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"net/http"
@@ -24,7 +23,7 @@ type HTTPServer struct {
 	logger   *zap.SugaredLogger
 	wg       sync.WaitGroup
 	storage  stor.Storage
-	conn     *pgx.Conn
+	conn     *pgxpool.Pool
 }
 
 func New(
@@ -138,9 +137,7 @@ func (s *HTTPServer) Run() {
 func (s *HTTPServer) Shutdown() {
 	s.logger.Infof("Server was stopped.")
 	if s.conn != nil {
-		if err := s.conn.Close(s.ctx); err != nil {
-			s.logger.Errorf("Utilization data storage error: %v", err)
-		}
+		s.conn.Close()
 	}
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
