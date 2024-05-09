@@ -2,6 +2,7 @@ package localstorage
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	store "github.com/Eqke/metric-collector/internal/storage"
 	e "github.com/Eqke/metric-collector/pkg/error"
@@ -44,7 +45,7 @@ func New(logger *zap.SugaredLogger) *LocalStorage {
 	}
 }
 
-func (s *LocalStorage) SetValue(metricType, name, value string) error {
+func (s *LocalStorage) SetValue(ctx context.Context, metricType, name, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	switch metricType {
@@ -78,14 +79,13 @@ func (s *LocalStorage) SetValue(metricType, name, value string) error {
 	return nil
 }
 
-func (s *LocalStorage) SetMetric(m metric.Metrics) error {
+func (s *LocalStorage) SetMetric(ctx context.Context, m metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	return s.setMetric(m)
+	return s.setMetric(ctx, m)
 }
 
-func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
+func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (string, error) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -122,7 +122,7 @@ func (s *LocalStorage) GetValue(metricType, name string) (string, error) {
 
 }
 
-func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
+func (s *LocalStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.Metrics, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var met metric.Metrics
@@ -166,7 +166,7 @@ func (s *LocalStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 	return met, nil
 }
 
-func (s *LocalStorage) GetMetrics() (map[string][]store.Metric, error) {
+func (s *LocalStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	metrics := make(map[string][]store.Metric, 0)
@@ -189,11 +189,11 @@ func (s *LocalStorage) GetMetrics() (map[string][]store.Metric, error) {
 	return metrics, nil
 }
 
-func (s *LocalStorage) SetMetrics(metrics []metric.Metrics) error {
+func (s *LocalStorage) SetMetrics(ctx context.Context, metrics []metric.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, m := range metrics {
-		err := s.setMetric(m)
+		err := s.setMetric(ctx, m)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func (s *LocalStorage) SetMetrics(metrics []metric.Metrics) error {
 	return nil
 }
 
-func (s *LocalStorage) setMetric(m metric.Metrics) error {
+func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 	if m.ID == "" {
 		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
 		return store.ErrIDIsEmpty
@@ -228,25 +228,25 @@ func (s *LocalStorage) setMetric(m metric.Metrics) error {
 	return nil
 }
 
-func (s *LocalStorage) ToJSON() ([]byte, error) {
+func (s *LocalStorage) ToJSON(ctx context.Context) ([]byte, error) {
 	return json.MarshalIndent(s.storage, "", "  ")
 }
 
-func (s *LocalStorage) FromJSON(data []byte) error {
+func (s *LocalStorage) FromJSON(ctx context.Context, data []byte) error {
 	return json.Unmarshal(data, &s.storage)
 }
 
-func (s *LocalStorage) ToFile(path string) error {
+func (s *LocalStorage) ToFile(ctx context.Context, path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	data, err := s.ToJSON()
+	data, err := s.ToJSON(ctx)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, 0644)
 }
 
-func (s *LocalStorage) FromFile(path string) error {
+func (s *LocalStorage) FromFile(ctx context.Context, path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	f, err := os.Open(path)
@@ -259,7 +259,7 @@ func (s *LocalStorage) FromFile(path string) error {
 	if err != nil {
 		return err
 	}
-	return s.FromJSON(data.Bytes())
+	return s.FromJSON(ctx, data.Bytes())
 }
 
 func (s *LocalStorage) Close() error {

@@ -36,7 +36,7 @@ func POSTMetricHandler(
 		logger.Infof("metric was received with type: %s, name: %s, value: %s",
 			metricType, metricName, metricValue)
 		err := retry.Retry(logger, 3, func() error {
-			return s.SetValue(metricType, metricName, metricValue)
+			return s.SetValue(context, metricType, metricName, metricValue)
 		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointPostMetric, err)

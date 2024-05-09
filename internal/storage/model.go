@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"github.com/Eqke/metric-collector/pkg/metric"
 )
@@ -33,16 +34,16 @@ type Metric struct {
 }
 
 type Storage interface {
-	SetValue(string, string, string) error
-	SetMetric(metric.Metrics) error
-	GetValue(string, string) (string, error)
-	GetMetrics() (map[string][]Metric, error)
-	GetMetric(metric.Metrics) (metric.Metrics, error)
-	SetMetrics([]metric.Metrics) error
-	ToJSON() ([]byte, error)
-	FromJSON([]byte) error
-	ToFile(string) error
-	FromFile(string) error
+	SetValue(context.Context, string, string, string) error
+	SetMetric(context.Context, metric.Metrics) error
+	GetValue(context.Context, string, string) (string, error)
+	GetMetrics(context.Context) (map[string][]Metric, error)
+	GetMetric(context.Context, metric.Metrics) (metric.Metrics, error)
+	SetMetrics(context.Context, []metric.Metrics) error
+	ToJSON(context.Context) ([]byte, error)
+	FromJSON(context.Context, []byte) error
+	ToFile(context.Context, string) error
+	FromFile(context.Context, string) error
 	Type() string
 	Close() error
 }

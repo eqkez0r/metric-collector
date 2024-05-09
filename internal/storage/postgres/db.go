@@ -26,7 +26,6 @@ const (
 )
 
 type PSQLStorage struct {
-	ctx    context.Context
 	db     *pgxpool.Pool
 	logger *zap.SugaredLogger
 }
@@ -78,17 +77,16 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 	}
 
 	return &PSQLStorage{
-		ctx:    ctx,
 		db:     db,
 		logger: logger,
 	}, nil
 }
 
-func (p *PSQLStorage) SetValue(metricType, name, value string) error {
+func (p *PSQLStorage) SetValue(ctx context.Context, metricType, name, value string) error {
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			_, err := p.db.Exec(p.ctx, querySetCounter, name, value)
+			_, err := p.db.Exec(ctx, querySetCounter, name, value)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
@@ -96,7 +94,7 @@ func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 		}
 	case metric.TypeGauge.String():
 		{
-			_, err := p.db.Exec(p.ctx, querySetGauge, name, value)
+			_, err := p.db.Exec(ctx, querySetGauge, name, value)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
@@ -115,11 +113,11 @@ func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 	return nil
 }
 
-func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
+func (p *PSQLStorage) SetMetric(ctx context.Context, m metric.Metrics) error {
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			_, err := p.db.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
+			_, err := p.db.Exec(ctx, querySetCounter, m.ID, m.Delta)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
@@ -127,7 +125,7 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 		}
 	case metric.TypeGauge.String():
 		{
-			_, err := p.db.Exec(p.ctx, querySetGauge, m.ID, m.Value)
+			_, err := p.db.Exec(ctx, querySetGauge, m.ID, m.Value)
 			if err != nil {
 				p.logger.Errorf("Database exec error: %v", err)
 				return err
@@ -142,9 +140,9 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 	return nil
 }
 
-func (p *PSQLStorage) SetMetrics(m []metric.Metrics) error {
+func (p *PSQLStorage) SetMetrics(ctx context.Context, m []metric.Metrics) error {
 	for _, v := range m {
-		err := p.SetMetric(v)
+		err := p.SetMetric(ctx, v)
 		if err != nil {
 			return err
 		}
@@ -152,13 +150,13 @@ func (p *PSQLStorage) SetMetrics(m []metric.Metrics) error {
 	return nil
 }
 
-func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
+func (p *PSQLStorage) GetValue(ctx context.Context, metricType, name string) (string, error) {
 	var row pgx.Row
 	var value string
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			row = p.db.QueryRow(p.ctx, queryGetCounter, name)
+			row = p.db.QueryRow(ctx, queryGetCounter, name)
 			if err := row.Scan(&value); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
@@ -167,7 +165,7 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 		}
 	case metric.TypeGauge.String():
 		{
-			row = p.db.QueryRow(p.ctx, queryGetGauge, name)
+			row = p.db.QueryRow(ctx, queryGetGauge, name)
 			if err := row.Scan(&value); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
@@ -182,14 +180,14 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 	}
 }
 
-func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
+func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric, error) {
 	metrics := make(map[string][]store.Metric, 0)
 	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0)
 	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0)
 	var rows pgx.Rows
 	var err error
 
-	rows, err = p.db.Query(p.ctx, queryGetAllGauge)
+	rows, err = p.db.Query(ctx, queryGetAllGauge)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
@@ -204,7 +202,7 @@ func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
 		metrics[metric.TypeGauge.String()] = append(metrics[metric.TypeGauge.String()], m)
 	}
 
-	rows, err = p.db.Query(p.ctx, queryGetAllCounter)
+	rows, err = p.db.Query(ctx, queryGetAllCounter)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
@@ -222,13 +220,13 @@ func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
 	return metrics, nil
 }
 
-func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
+func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.Metrics, error) {
 
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
 			if err := retry.Retry(p.logger, 3, func() error {
-				err := p.db.QueryRow(p.ctx, queryGetCounter, m.ID).Scan(&m.Delta)
+				err := p.db.QueryRow(ctx, queryGetCounter, m.ID).Scan(&m.Delta)
 				if err != nil {
 
 					return err
@@ -243,7 +241,7 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 	case metric.TypeGauge.String():
 		{
 			if err := retry.Retry(p.logger, 3, func() error {
-				err := p.db.QueryRow(p.ctx, queryGetGauge, m.ID).Scan(&m.Value)
+				err := p.db.QueryRow(ctx, queryGetGauge, m.ID).Scan(&m.Value)
 				if err != nil {
 					return err
 				}
@@ -264,19 +262,19 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 	return m, nil
 }
 
-func (p *PSQLStorage) ToJSON() ([]byte, error) {
+func (p *PSQLStorage) ToJSON(ctx context.Context) ([]byte, error) {
 	return nil, nil
 }
 
-func (p *PSQLStorage) FromJSON(bytes []byte) error {
+func (p *PSQLStorage) FromJSON(ctx context.Context, bytes []byte) error {
 	return nil
 }
 
-func (p *PSQLStorage) ToFile(s string) error {
+func (p *PSQLStorage) ToFile(ctx context.Context, s string) error {
 	return nil
 }
 
-func (p *PSQLStorage) FromFile(s string) error {
+func (p *PSQLStorage) FromFile(ctx context.Context, s string) error {
 	return nil
 }
 

@@ -21,7 +21,7 @@ func GetRootMetricsHandler(
 		var data map[string][]store.Metric
 		var err error
 		err = retry.Retry(logger, 3, func() error {
-			data, err = storage.GetMetrics()
+			data, err = storage.GetMetrics(context)
 			return err
 		})
 		if err != nil {

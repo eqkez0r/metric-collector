@@ -32,7 +32,7 @@ func PostMetricUpdates(
 
 		logger.Infof("metrics batch was recieved")
 		if err := retry.Retry(logger, 3, func() error {
-			return s.SetMetrics(arr)
+			return s.SetMetrics(context, arr)
 		}); err != nil {
 			logger.Errorf("%s: %v", err, storage.ErrIsUnknownType)
 			if errors.Is(err, storage.ErrIsUnknownType) {

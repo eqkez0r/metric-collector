@@ -16,7 +16,6 @@ import (
 )
 
 type HTTPServer struct {
-	ctx      context.Context
 	server   *http.Server
 	engine   *gin.Engine
 	settings *config.ServerConfig
@@ -64,7 +63,6 @@ func New(
 		},
 		engine:   r,
 		settings: s,
-		ctx:      ctx,
 		logger:   logger,
 		wg:       sync.WaitGroup{},
 		storage:  storage,
@@ -72,14 +70,14 @@ func New(
 	}, nil
 }
 
-func (s *HTTPServer) restoreProcess() {
+func (s *HTTPServer) restoreProcess(ctx context.Context) {
 	defer s.wg.Done()
 	s.logger.Info("Restore was started")
 	t := time.NewTicker(time.Duration(s.settings.StoreInterval) * time.Second)
 	defer t.Stop()
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-ctx.Done():
 			{
 				s.logger.Info("Restore was finished")
 				return
@@ -87,16 +85,16 @@ func (s *HTTPServer) restoreProcess() {
 		case <-t.C:
 			{
 				s.logger.Info("Restored...")
-				s.restore()
+				s.restore(ctx)
 				s.logger.Info("Restore was finished")
 			}
 		}
 	}
 }
 
-func (s *HTTPServer) restore() {
+func (s *HTTPServer) restore(ctx context.Context) {
 	func() {
-		b, err := s.storage.ToJSON()
+		b, err := s.storage.ToJSON(ctx)
 		if err != nil {
 			s.logger.Errorf("Restore error getting storage: %v", err)
 			return
@@ -115,7 +113,7 @@ func (s *HTTPServer) restore() {
 	}()
 }
 
-func (s *HTTPServer) Run() {
+func (s *HTTPServer) Run(ctx context.Context) {
 	s.logger.Infof("Server was started. Listening on: %s", s.settings.Endpoint)
 
 	go func() {
@@ -127,19 +125,19 @@ func (s *HTTPServer) Run() {
 
 	if s.settings.Restore && s.settings.DatabaseDSN == "" {
 		s.wg.Add(1)
-		go s.restoreProcess()
+		go s.restoreProcess(ctx)
 	}
 
-	<-s.ctx.Done()
+	<-ctx.Done()
 	s.wg.Wait()
 }
 
-func (s *HTTPServer) Shutdown() {
+func (s *HTTPServer) Shutdown(ctx context.Context) {
 	s.logger.Infof("Server was stopped.")
 	if s.conn != nil {
 		s.conn.Close()
 	}
-	err := s.server.Shutdown(context.Background())
+	err := s.server.Shutdown(ctx)
 	if err != nil {
 		s.logger.Errorf("Server shutdown error: %v", err)
 	}

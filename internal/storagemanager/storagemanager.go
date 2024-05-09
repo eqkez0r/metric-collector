@@ -20,13 +20,13 @@ func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.Serv
 	}
 	storage := localstorage.New(logger)
 	if cfg.Restore {
-		if err := storage.FromFile(cfg.FileStoragePath); os.IsNotExist(err) {
-			err = creatingStorageFile(cfg, storage, logger)
+		if err := storage.FromFile(ctx, cfg.FileStoragePath); os.IsNotExist(err) {
+			err = creatingStorageFile(ctx, cfg, storage, logger)
 			if err != nil {
 				logger.Fatalf("%v: %v", ErrPointGetStorage, err)
 			}
 		} else {
-			err = storage.FromFile(cfg.FileStoragePath)
+			err = storage.FromFile(ctx, cfg.FileStoragePath)
 			if err != nil {
 				logger.Fatalf("%v: %v", ErrPointGetStorage, err)
 			}
@@ -37,6 +37,7 @@ func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.Serv
 }
 
 func creatingStorageFile(
+	ctx context.Context,
 	settings *config.ServerConfig,
 	storage *localstorage.LocalStorage,
 	logger *zap.SugaredLogger) error {
@@ -46,7 +47,7 @@ func creatingStorageFile(
 	if err != nil {
 		return err
 	}
-	b, err := storage.ToJSON()
+	b, err := storage.ToJSON(ctx)
 	if err != nil {
 		return err
 	}

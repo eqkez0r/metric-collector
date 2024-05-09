@@ -34,7 +34,7 @@ func POSTMetricJSONHandler(
 		logger.Info("metric was received", m)
 
 		if err := retry.Retry(logger, 3, func() error {
-			return s.SetMetric(m)
+			return s.SetMetric(context, m)
 		}); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			if errors.Is(err, storage.ErrIsUnknownType) {

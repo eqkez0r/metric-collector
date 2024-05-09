@@ -40,14 +40,12 @@ type Agent struct {
 	client      *resty.Client
 	pollCounter int64
 	mp          map[metric.TypeMetric]map[metric.MetricName]string
-	ctx         context.Context
 	wg          sync.WaitGroup
 	mu          *sync.Mutex
 	attempt     int
 }
 
 func New(
-	ctx context.Context,
 	settings *config.AgentConfig,
 	logger *zap.SugaredLogger) *Agent {
 	client := resty.New()
@@ -58,7 +56,6 @@ func New(
 	})
 	client.SetRetryMaxWaitTime(5 * time.Second)
 	return &Agent{
-		ctx:         ctx,
 		logger:      logger,
 		settings:    settings,
 		client:      client,
@@ -66,26 +63,26 @@ func New(
 	}
 }
 
-func (a *Agent) Run() {
+func (a *Agent) Run(ctx context.Context) {
 	a.mu = &sync.Mutex{}
 	ms := &runtime.MemStats{}
 	a.mp = metric.PrepareMetrics(ms)
 	a.wg.Add(1)
-	go a.pollMetricProcess(ms)
+	go a.pollMetricProcess(ctx, ms)
 	a.wg.Add(1)
-	go a.postMetrics()
+	go a.postMetrics(ctx)
 	a.logger.Info("agent was started.")
 	a.wg.Wait()
 	a.logger.Info("agent was stopped")
 }
 
-func (a *Agent) postMetrics() {
+func (a *Agent) postMetrics(ctx context.Context) {
 	defer a.wg.Done()
 	t := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
 	defer t.Stop()
 	for {
 		select {
-		case <-a.ctx.Done():
+		case <-ctx.Done():
 			{
 				a.logger.Info("post metrics was stopped")
 				return
@@ -148,7 +145,7 @@ func (a *Agent) pollUsualMetric(metricName, metricType, metricValue string) erro
 }
 
 func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error {
-	bytes, err := a.prepareJSONMetric(metricName, metricType, metricValue)
+	b, err := a.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -156,7 +153,7 @@ func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error
 	endPoint := a.getEndpointToJSONMetric()
 	resp, err := a.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(bytes).
+		SetBody(b).
 		Post(endPoint)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
@@ -168,14 +165,14 @@ func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error
 }
 
 func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) error {
-	bytes, err := a.prepareJSONMetric(metricName, metricType, metricValue)
+	b, err := a.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
 	}
 
 	endPoint := a.getEndpointToJSONMetric()
-	encoded, err := a.compress(bytes)
+	encoded, err := a.compress(b)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -198,7 +195,6 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 
 func (a *Agent) pollMetricByBatch() error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	arr := []metric.Metrics{}
 	for k, v := range a.mp {
 		switch k {
@@ -228,6 +224,7 @@ func (a *Agent) pollMetricByBatch() error {
 			}
 		}
 	}
+	a.mu.Unlock()
 	if len(arr) == 0 {
 		return nil
 	}
@@ -246,7 +243,6 @@ func (a *Agent) pollMetricByBatch() error {
 
 func (a *Agent) pollEncodedMetricByBatch() error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	arr := []metric.Metrics{}
 	for k, v := range a.mp {
 		switch k {
@@ -276,6 +272,7 @@ func (a *Agent) pollEncodedMetricByBatch() error {
 			}
 		}
 	}
+	a.mu.Unlock()
 	if len(arr) == 0 {
 		return nil
 	}
@@ -303,13 +300,13 @@ func (a *Agent) pollEncodedMetricByBatch() error {
 	return nil
 }
 
-func (a *Agent) pollMetricProcess(ms *runtime.MemStats) {
+func (a *Agent) pollMetricProcess(ctx context.Context, ms *runtime.MemStats) {
 	defer a.wg.Done()
 	t := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
 	defer t.Stop()
 	for {
 		select {
-		case <-a.ctx.Done():
+		case <-ctx.Done():
 			{
 				a.logger.Info("poll metrics was stopped")
 				return
@@ -375,12 +372,12 @@ func (a *Agent) prepareJSONMetric(metricName, metricType, metricValue string) ([
 		}
 	}
 
-	bytes, err := json.Marshal(m)
+	b, err := json.Marshal(m)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return nil, err
 	}
-	return bytes, nil
+	return b, nil
 }
 
 func (a *Agent) compress(b []byte) ([]byte, error) {

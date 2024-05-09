@@ -23,6 +23,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	a := agent.New(ctx, settings, sugLog)
-	a.Run()
+	a := agent.New(settings, sugLog)
+	a.Run(ctx)
 }

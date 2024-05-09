@@ -38,7 +38,7 @@ func GetMetricJSONHandler(
 			return
 		}
 		err = retry.Retry(logger, 3, func() error {
-			m, err = s.GetMetric(m)
+			m, err = s.GetMetric(context, m)
 			return err
 		})
 		if err != nil {

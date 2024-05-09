@@ -15,22 +15,22 @@ const (
 func GETMetricHandler(
 	logger *zap.SugaredLogger,
 	storage storage.Storage) gin.HandlerFunc {
-	return func(context *gin.Context) {
-		metricType := context.Param("type")
-		metricName := context.Param("name")
+	return func(c *gin.Context) {
+		metricType := c.Param("type")
+		metricName := c.Param("name")
 		logger.Infof("metric was requested with type: %s, name: %s", metricType, metricName)
 		var value string
 		var err error
 		err = retry.Retry(logger, 3, func() error {
-			value, err = storage.GetValue(metricType, metricName)
+			value, err = storage.GetValue(c, metricType, metricName)
 			return err
 		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointGetMetric, err)
-			context.Status(http.StatusNotFound)
+			c.Status(http.StatusNotFound)
 			return
 		}
-		context.String(http.StatusOK, value)
+		c.String(http.StatusOK, value)
 		logger.Infof("metric get success with type: %s, name: %s, value: %s", metricType, metricName, value)
 	}
 }
