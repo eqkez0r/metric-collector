@@ -42,12 +42,12 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 	err = retry.Retry(3, func() error {
 		err = db.Ping(ctx)
 		if err != nil {
-			logger.Errorf("Database ping error: %v", err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
+		logger.Errorf("Database ping error: %v", err)
 		return nil, err
 	}
 
@@ -59,6 +59,10 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 		}
 		return nil
 	})
+	if err != nil {
+		logger.Errorf("Database exec error: %v", err)
+		return nil, err
+	}
 
 	err = retry.Retry(3, func() error {
 		_, err = db.Exec(ctx, queryCreateCounters)
@@ -68,6 +72,10 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 		}
 		return nil
 	})
+	if err != nil {
+		logger.Errorf("Database exec error: %v", err)
+		return nil, err
+	}
 
 	return &PSQLStorage{
 		ctx:    ctx,
@@ -83,11 +91,11 @@ func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 			if err := retry.Retry(3, func() error {
 				_, err := p.db.Exec(p.ctx, querySetCounter, name, value)
 				if err != nil {
-					p.logger.Errorf("Database exec error: %v", err)
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
@@ -96,11 +104,11 @@ func (p *PSQLStorage) SetValue(metricType, name, value string) error {
 			if err := retry.Retry(3, func() error {
 				_, err := p.db.Exec(p.ctx, querySetGauge, name, value)
 				if err != nil {
-					p.logger.Errorf("Database exec error: %v", err)
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
@@ -124,11 +132,11 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 			if err := retry.Retry(3, func() error {
 				_, err := p.db.Exec(p.ctx, querySetCounter, m.ID, m.Delta)
 				if err != nil {
-					p.logger.Errorf("Database exec error: %v", err)
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
@@ -137,11 +145,11 @@ func (p *PSQLStorage) SetMetric(m metric.Metrics) error {
 			if err := retry.Retry(3, func() error {
 				_, err := p.db.Exec(p.ctx, querySetGauge, m.ID, m.Value)
 				if err != nil {
-					p.logger.Errorf("Database exec error: %v", err)
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database exec error: %v", err)
 				return err
 			}
 		}
@@ -173,11 +181,12 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 			if err := retry.Retry(3, func() error {
 				row = p.db.QueryRow(p.ctx, queryGetCounter, name)
 				if err := row.Scan(&value); err != nil {
-					p.logger.Errorf("Database scan error: %v", err)
+
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
 			return value, nil
@@ -186,13 +195,12 @@ func (p *PSQLStorage) GetValue(metricType, name string) (string, error) {
 		{
 			if err := retry.Retry(3, func() error {
 				row = p.db.QueryRow(p.ctx, queryGetGauge, name)
-
 				if err := row.Scan(&value); err != nil {
-					p.logger.Errorf("Database scan error: %v", err)
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database scan error: %v", err)
 				return "", err
 			}
 			return value, nil
@@ -214,11 +222,11 @@ func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
 		var err error
 		rows, err = p.db.Query(p.ctx, queryGetAllGauge)
 		if err != nil {
-			p.logger.Errorf("Database query error: %v", err)
 			return err
 		}
 		return nil
 	}); err != nil {
+		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
@@ -235,11 +243,11 @@ func (p *PSQLStorage) GetMetrics() (map[string][]store.Metric, error) {
 		var err error
 		rows, err = p.db.Query(p.ctx, queryGetAllCounter)
 		if err != nil {
-			p.logger.Errorf("Database query error: %v", err)
 			return err
 		}
 		return nil
 	}); err != nil {
+		p.logger.Errorf("Database query error: %v", err)
 		return nil, err
 	}
 
@@ -263,28 +271,28 @@ func (p *PSQLStorage) GetMetric(m metric.Metrics) (metric.Metrics, error) {
 			if err := retry.Retry(3, func() error {
 				err := p.db.QueryRow(p.ctx, queryGetCounter, m.ID).Scan(&m.Delta)
 				if err != nil {
-					p.logger.Errorf("Database scan error: %v", err)
+
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
-
 		}
 	case metric.TypeGauge.String():
 		{
 			if err := retry.Retry(3, func() error {
 				err := p.db.QueryRow(p.ctx, queryGetGauge, m.ID).Scan(&m.Value)
 				if err != nil {
-					p.logger.Errorf("Database scan error: %v", err)
+
 					return err
 				}
 				return nil
 			}); err != nil {
+				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
-
 		}
 	default:
 		{
