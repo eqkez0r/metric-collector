@@ -21,7 +21,7 @@ const (
 
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1`
 	queryGetAllCounter = `SELECT name, value FROM counters`
-	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value =  $2`
+	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = counters.value + EXCLUDED.value`
 )
 
 type PSQLStorage struct {

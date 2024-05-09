@@ -28,5 +28,7 @@ vendor/
 .vscode
 
 build
-
 data
+
+statictest
+metricstest
