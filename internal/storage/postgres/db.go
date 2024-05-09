@@ -312,8 +312,9 @@ func (p *PSQLStorage) FromFile(s string) error {
 	return nil
 }
 
-func (p *PSQLStorage) Close() {
+func (p *PSQLStorage) Close() error {
 	p.db.Close()
+	return nil
 }
 
 func (p *PSQLStorage) Type() string {
