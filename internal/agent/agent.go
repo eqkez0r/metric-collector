@@ -267,13 +267,15 @@ func (a *Agent) pollMetricByBatch() error {
 	}
 	var resp *resty.Response
 	var err error
+	var b []byte
 	if a.settings.HashKey == "" {
 		resp, err = a.client.R().
 			SetHeader("Content-Type", "application/json").
 			SetBody(arr).
 			Post(a.getEndpointToBatchMetric())
+
 	} else {
-		b, err := json.Marshal(arr)
+		b, err = json.Marshal(arr)
 		if err != nil {
 			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 			return err
@@ -287,6 +289,7 @@ func (a *Agent) pollMetricByBatch() error {
 			SetHeader("HashSHA256", sign).
 			SetBody(arr).
 			Post(a.getEndpointToBatchMetric())
+
 	}
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
