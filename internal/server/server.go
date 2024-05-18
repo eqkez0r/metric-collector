@@ -119,7 +119,6 @@ func (s *HTTPServer) Run(ctx context.Context) {
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
 			s.logger.Errorf("Server error: %v", err)
-			os.Exit(1)
 		}
 	}()
 
