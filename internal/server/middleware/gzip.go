@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/Eqke/metric-collector/internal/compress"
+	"github.com/Eqke/metric-collector/internal/server/writers/compress"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"

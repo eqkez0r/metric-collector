@@ -47,7 +47,7 @@ func New(
 
 	logger.Infof("Server initing with %s storage", storage.Type())
 
-	r.Use(middleware.Logger(logger), middleware.Gzip(logger))
+	r.Use(middleware.Logger(logger), middleware.Hash(logger, s.HashKey), middleware.Gzip(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
 	r.GET("/ping", h.Ping(logger, conn))
