@@ -27,7 +27,10 @@ func Hash(
 		}
 		logger.Infof("hash header: %s", context.GetHeader("HashSHA256"))
 		if hashKey != "" {
-
+			context.Writer = &hashwriter.HashResponseWriter{
+				ResponseWriter: context.Writer,
+				Key:            hashKey,
+			}
 			logger.Info("checking hash")
 			body, err := io.ReadAll(context.Request.Body)
 			if err != nil {
@@ -48,10 +51,7 @@ func Hash(
 			}
 			//logger.Infof("hash: %s hash calculated: %s", header, sign)
 			logger.Info("hash checked successful")
-			context.Writer = &hashwriter.HashResponseWriter{
-				ResponseWriter: context.Writer,
-				Key:            hashKey,
-			}
+
 		}
 
 		context.Next()
