@@ -20,7 +20,7 @@ func Hash(
 	hashKey string,
 ) gin.HandlerFunc {
 	return func(context *gin.Context) {
-
+		logger.Infof("hash header: %s", context.GetHeader("HashSHA256"))
 		if hashKey != "" && context.GetHeader("HashSHA256") != "" {
 			header := context.GetHeader("HashSHA256")
 			logger.Info("checking hash")
