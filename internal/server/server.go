@@ -130,6 +130,7 @@ func (s *HTTPServer) Run(ctx context.Context) {
 
 	<-ctx.Done()
 	s.wg.Wait()
+	s.Shutdown(ctx)
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) {

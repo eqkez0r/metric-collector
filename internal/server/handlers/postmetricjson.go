@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-var (
+const (
 	errPointPostMetricJSON = "error in POST /update: "
 )
 

@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-var (
+const (
 	errPostMetricUpdates = "error in POST /updates: " // error in POST /update
 )
 
@@ -19,14 +19,14 @@ func PostMetricUpdates(
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		if context.ContentType() != "application/json" {
-			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, context.ContentType())
+			logger.Errorf("%s: unknown content type %s", errPostMetricUpdates, context.ContentType())
 			context.Status(http.StatusBadRequest)
 			return
 		}
 		arr := []metric.Metrics{}
 		if err := context.BindJSON(&arr); err != nil {
 			logger.Infof("getting data from body: %s", arr)
-			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
+			logger.Errorf("%s: %v", errPostMetricUpdates, err)
 			context.Status(http.StatusBadRequest)
 			return
 		}

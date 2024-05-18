@@ -27,7 +27,7 @@ func Hash(
 		}
 		logger.Infof("hash header: %s", context.GetHeader("HashSHA256"))
 		if hashKey != "" {
-			header := context.GetHeader("HashSHA256")
+
 			logger.Info("checking hash")
 			body, err := io.ReadAll(context.Request.Body)
 			if err != nil {
@@ -41,8 +41,8 @@ func Hash(
 			//logger.Infof("hashKey %s", hashKey)
 			h := hash.Hash(body, hashKey)
 			sign := base64.StdEncoding.EncodeToString(h)
-			if header != sign {
-				logger.Errorf("%s: %s != %s", errPointHash, header, sign)
+			if hexHash != sign {
+				logger.Errorf("%s: %s != %s", errPointHash, hexHash, sign)
 				context.Status(http.StatusBadRequest)
 				return
 			}
