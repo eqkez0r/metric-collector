@@ -20,8 +20,13 @@ func Hash(
 	hashKey string,
 ) gin.HandlerFunc {
 	return func(context *gin.Context) {
+		hexHash := context.GetHeader("HashSHA256")
+		if hexHash == "" {
+			context.Next()
+			return
+		}
 		logger.Infof("hash header: %s", context.GetHeader("HashSHA256"))
-		if hashKey != "" && context.GetHeader("HashSHA256") != "" {
+		if hashKey != "" {
 			header := context.GetHeader("HashSHA256")
 			logger.Info("checking hash")
 			body, err := io.ReadAll(context.Request.Body)
