@@ -36,7 +36,7 @@ func New(
 	r := gin.New()
 	var conn *pgxpool.Pool = nil
 	var err error
-
+	r.RedirectFixedPath = false
 	if s.DatabaseDSN != "" {
 		conn, err = pgxpool.New(ctx, s.DatabaseDSN)
 		if err != nil {
@@ -133,12 +133,11 @@ func (s *HTTPServer) Run(ctx context.Context) {
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) {
-	time.Sleep(time.Second * 5)
 	s.logger.Infof("Server was stopped.")
+	err := s.server.Shutdown(ctx)
 	if s.conn != nil {
 		s.conn.Close()
 	}
-	err := s.server.Shutdown(ctx)
 	if err != nil {
 		s.logger.Errorf("Server shutdown error: %v", err)
 	}

@@ -21,12 +21,9 @@ func Hash(
 ) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		hexHash := context.GetHeader("HashSHA256")
-		if hexHash == "" {
-			context.Next()
-			return
-		}
+
 		logger.Infof("hash header: %s", context.GetHeader("HashSHA256"))
-		if hashKey != "" {
+		if hashKey != "" && hexHash != "" {
 			context.Writer = &hashwriter.HashResponseWriter{
 				ResponseWriter: context.Writer,
 				Key:            hashKey,
