@@ -14,7 +14,7 @@ const (
 	TYPE = "PostgreSQL database"
 
 	queryCreateGauges   = `CREATE TABLE IF NOT EXISTS gauges(name text primary key, value double precision)`
-	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value int)`
+	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value bigint)`
 
 	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1`
 	queryGetAllGauge = `SELECT name, value FROM gauges`
