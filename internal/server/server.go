@@ -133,6 +133,7 @@ func (s *HTTPServer) Run(ctx context.Context) {
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) {
+	time.Sleep(time.Second * 5)
 	s.logger.Infof("Server was stopped.")
 	if s.conn != nil {
 		s.conn.Close()
