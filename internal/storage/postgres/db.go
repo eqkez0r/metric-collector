@@ -225,32 +225,20 @@ func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.M
 	switch m.MType {
 	case metric.TypeCounter.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				err := p.db.QueryRow(ctx, queryGetCounter, m.ID).Scan(&m.Delta)
-				if err != nil {
-
-					return err
-				}
-				p.logger.Debugf("debug delta: %v", m.Delta)
-				return nil
-			}); err != nil {
+			if err := p.db.QueryRow(ctx, queryGetCounter, m.ID).Scan(&m.Delta); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
+			p.logger.Infof("debug delta: %v", m.Delta)
+
 		}
 	case metric.TypeGauge.String():
 		{
-			if err := retry.Retry(p.logger, 3, func() error {
-				err := p.db.QueryRow(ctx, queryGetGauge, m.ID).Scan(&m.Value)
-				if err != nil {
-					return err
-				}
-				p.logger.Debugf("debug value: %v", m.Value)
-				return nil
-			}); err != nil {
+			if err := p.db.QueryRow(ctx, queryGetGauge, m.ID).Scan(&m.Value); err != nil {
 				p.logger.Errorf("Database scan error: %v", err)
 				return m, err
 			}
+			p.logger.Infof("debug value: %v", m.Value)
 		}
 	default:
 		{
