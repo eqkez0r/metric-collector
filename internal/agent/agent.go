@@ -12,7 +12,7 @@ import (
 	"github.com/Eqke/metric-collector/utils/hash"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
-	"io/ioutil"
+	"io"
 	"log"
 	"runtime"
 	"strconv"
@@ -417,7 +417,7 @@ func (a *Agent) decompress(b []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(gz)
+	return io.ReadAll(gz)
 }
 
 func (a *Agent) close() {
