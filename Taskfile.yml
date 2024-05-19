@@ -16,6 +16,10 @@ tasks:
     - task: iter8
     - task: iter9
     - task: iter10
+    - task: iter11
+    - task: iter12
+    - task: iter13
+    - task: iter14
 
   runServer:
     cmds:
@@ -35,8 +39,8 @@ tasks:
 
   buildForTest:
     cmds:
-      - go build -o cmd/agent/agent.exe ./cmd/agent
-      - go build -o cmd/server/server.exe ./cmd/server
+      - go build -o ./cmd/agent/agent.exe ./cmd/agent
+      - go build -o ./cmd/server/server.exe ./cmd/server
 
   test:
     cmds:
@@ -44,40 +48,56 @@ tasks:
 
   iter1:
     cmds:
-     - ./metricstest.exe -test.v -test.run=^TestIteration1$$ -binary-path=cmd/server/main.exe
+     - ./metricstest.exe -test.v -test.run=^TestIteration1$$ -binary-path=./cmd/server/server.exe
 
   iter2:
     cmds:
-      - ./metricstest.exe -test.v -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/main.exe
+      - ./metricstest.exe -test.v -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent.exe
 
   iter3:
     cmds:
-      - ./metricstest.exe -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -binary-path=cmd/server/main.exe -agent-binary-path=cmd/agent/main.exe
+      - ./metricstest.exe -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -binary-path=./cmd/server/server.exe -agent-binary-path=./cmd/agent/agent.exe
 
   iter4:
     cmds:
-      - ./metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/main.exe -binary-path=cmd/server/main.exe -server-port=$SERVER_PORT-source-path=.
+      - ./metricstest -test.v -test.run=^TestIteration4$  -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -server-port=8080 -source-path=.
 
   iter5:
     cmds:
-      - ./metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/main.exe -binary-path=cmd/server/main.exe -server-port=$SERVER_PORT -source-path=.
+      - ./metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -server-port=8080 -source-path=.
 
   iter6:
     cmds:
-      - ./metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+      - ./metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -server-port=8080 -source-path=.
 
   iter7:
     cmds:
-      - ./metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+      - ./metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -server-port=8080 -source-path=.
 
   iter8:
     cmds:
-      - metricstest -test.v -test.run=^TestIteration8$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+      - metricstest -test.v -test.run=^TestIteration8$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -server-port=8080 -source-path=.
 
   iter9:
     cmds:
-      - metricstest -test.v -test.run=^TestIteration9$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=$TEMP_FILE -server-port=$SERVER_PORT -source-path=.
+      - metricstest -test.v -test.run=^TestIteration9$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -file-storage-path=./tmp.txt -server-port=8080 -source-path=.
 
   iter10:
     cmds:
-      - ./metricstest -test.v -test.run=^TestIteration10[AB]$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn=$DATABASE_DSN -server-port=$SERVER_PORT -source-path=.
+      - ./metricstest -test.v -test.run=^TestIteration10[AB]$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -database-dsn='postgres://postgres:postgres@localhost:5432/metric-collector?sslmode=disable' -server-port=8080 -source-path=.
+
+  iter11:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration11$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -database-dsn=postgres://postgres:postgres@localhost:5432/metric-collector?sslmode=disable -server-port=8080 -source-path=.
+
+  iter12:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration12$ -agent-binary-path=./cmd/agent/agent.exe -binary-path=./cmd/server/server.exe -database-dsn='postgres://postgres:postgres@localhost:5432/metric-collector?sslmode=disable' -server-port=8080 -source-path=.
+
+  iter13:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration13$  -agent-binary-path=./cmd/agent/agent.exe  -binary-path=./cmd/server/server.exe  -database-dsn='postgres://postgres:postgres@localhost:5432/metric-collector?sslmode=disable'  -server-port=8080  -source-path=.
+
+  iter14:
+    cmds:
+      - ./metricstest -test.v -test.run=^TestIteration14$  -agent-binary-path=./cmd/agent/agent.exe  -binary-path=./cmd/server/server.exe  -database-dsn='postgres://postgres:postgres@localhost:5432/metric-collector?sslmode=disable'  -key="SUPAHASH"  -server-port=8080  -source-path=.

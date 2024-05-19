@@ -34,9 +34,9 @@ func New(
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.RedirectFixedPath = true
 	var conn *pgxpool.Pool = nil
 	var err error
-	r.RedirectFixedPath = false
 	if s.DatabaseDSN != "" {
 		conn, err = pgxpool.New(ctx, s.DatabaseDSN)
 		if err != nil {
@@ -49,12 +49,12 @@ func New(
 
 	r.Use(middleware.Logger(logger), middleware.Hash(logger, s.HashKey), middleware.Gzip(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
-	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
-	r.GET("/ping", h.Ping(logger, conn))
-	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
-	r.POST("/update", h.POSTMetricJSONHandler(logger, storage))
-	r.POST("/value", h.GetMetricJSONHandler(logger, storage))
-	r.POST("/updates", h.PostMetricUpdates(logger, storage))
+	r.GET("/value/:type/:name/", h.GETMetricHandler(logger, storage))
+	r.GET("/ping/", h.Ping(logger, conn))
+	r.POST("/update/:type/:name/:value/", h.POSTMetricHandler(logger, storage))
+	r.POST("/update/", h.POSTMetricJSONHandler(logger, storage))
+	r.POST("/value/", h.GetMetricJSONHandler(logger, storage))
+	r.POST("/updates/", h.PostMetricUpdates(logger, storage))
 
 	return &HTTPServer{
 		server: &http.Server{
