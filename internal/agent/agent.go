@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/Eqke/metric-collector/internal/config"
@@ -13,6 +12,7 @@ import (
 	"github.com/Eqke/metric-collector/utils/hash"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
+	"io/ioutil"
 	"log"
 	"runtime"
 	"strconv"
@@ -134,21 +134,9 @@ func (a *Agent) pollSingleMetric() error {
 
 func (a *Agent) pollUsualMetric(metricName, metricType, metricValue string) error {
 	endPoint := a.getEndpointToUsualMetric(metricType, metricName, metricValue)
-	var resp *resty.Response
-	var err error
-	if a.settings.HashKey == "" {
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "text/plain").
-			Post(endPoint)
-	} else {
-		h := hash.Hash([]byte{}, a.settings.HashKey)
-		sign := base64.StdEncoding.EncodeToString(h)
-		a.logger.Infof("hash: %s", sign)
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "text/plain").
-			SetHeader("HashSHA256", sign).
-			Post(endPoint)
-	}
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "text/plain").
+		Post(endPoint)
 	if err != nil {
 		log.Println(e.WrapError(errPointPostMetrics, err))
 		return err
@@ -165,22 +153,13 @@ func (a *Agent) pollJSONMetric(metricName, metricType, metricValue string) error
 		return err
 	}
 	endPoint := a.getEndpointToJSONMetric()
-	var resp *resty.Response
-	if a.settings.HashKey == "" {
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetBody(b).
-			Post(endPoint)
-	} else {
-		h := hash.Hash(b, a.settings.HashKey)
-		sign := base64.StdEncoding.EncodeToString(h)
-		a.logger.Infof("hash: %s", sign)
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("HashSHA256", sign).
-			SetBody(b).
-			Post(endPoint)
+	req := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(b)
+	if a.settings.HashKey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(b, a.settings.HashKey))
 	}
+	resp, err := req.Post(endPoint)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -204,23 +183,14 @@ func (a *Agent) pollEncodeMetric(metricName, metricType, metricValue string) err
 		return err
 	}
 
-	var resp *resty.Response
-	if a.settings.HashKey == "" {
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetBody(encoded).
-			Post(endPoint)
-	} else {
-		h := hash.Hash(encoded, a.settings.HashKey)
-		sign := base64.StdEncoding.EncodeToString(h)
-		a.logger.Infof("hash: %s", sign)
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("HashSHA256", sign).
-			SetBody(encoded).
-			Post(endPoint)
+	req := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(encoded)
+	if a.settings.HashKey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encoded, a.settings.HashKey))
 	}
-
+	resp, err := req.Post(endPoint)
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -265,32 +235,18 @@ func (a *Agent) pollMetricByBatch() error {
 	if len(arr) == 0 {
 		return nil
 	}
-	var resp *resty.Response
-	var err error
-	var b []byte
-	if a.settings.HashKey == "" {
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetBody(arr).
-			Post(a.getEndpointToBatchMetric())
-
-	} else {
-		b, err = json.Marshal(arr)
+	req := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(arr)
+	if a.settings.HashKey != "" {
+		b, err := json.Marshal(arr)
 		if err != nil {
 			a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 			return err
 		}
-		h := hash.Hash(b, a.settings.HashKey)
-		sign := base64.StdEncoding.EncodeToString(h)
-		a.logger.Infof("hash: %s", sign)
-		//a.logger.Infof("data: %s", b)
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("HashSHA256", sign).
-			SetBody(arr).
-			Post(a.getEndpointToBatchMetric())
-
+		req = req.SetHeader("HashSHA256", hash.Sign(b, a.settings.HashKey))
 	}
+	resp, err := req.Post(a.getEndpointToBatchMetric())
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -345,25 +301,14 @@ func (a *Agent) pollEncodedMetricByBatch() error {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
 	}
-	var resp *resty.Response
-	if a.settings.HashKey == "" {
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(encoded).
-			Post(a.getEndpointToBatchMetric())
-	} else {
-		h := hash.Hash(encoded, a.settings.HashKey)
-		sign := base64.StdEncoding.EncodeToString(h)
-		a.logger.Infof("hash: %s", sign)
-		//a.logger.Infof("data: %s", encoded)
-		resp, err = a.client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("HashSHA256", sign).
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(encoded).
-			Post(a.getEndpointToBatchMetric())
+	req := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(encoded)
+	if a.settings.HashKey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encoded, a.settings.HashKey))
 	}
+	resp, err := req.Post(a.getEndpointToBatchMetric())
 	if err != nil {
 		a.logger.Errorf("%s: %v", errPointPostMetrics, err)
 		return err
@@ -464,4 +409,19 @@ func (a *Agent) compress(b []byte) ([]byte, error) {
 	gz.Close()
 
 	return buf.Bytes(), nil
+}
+
+func (a *Agent) decompress(b []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(b)
+	gz, err := gzip.NewReader(buf)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(gz)
+}
+
+func (a *Agent) close() {
+
+	a.wg.Wait()
+	a.logger.Info("agent was stopped")
 }

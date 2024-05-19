@@ -26,8 +26,7 @@ func PostMetricUpdates(
 		}
 		arr := []metric.Metrics{}
 		if err := context.BindJSON(&arr); err != nil {
-			logger.Infof("getting data from body: %s", arr)
-			logger.Errorf("%s: %v", errPostMetricUpdates, err)
+			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			context.Status(http.StatusBadRequest)
 			return
 		}
