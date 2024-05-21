@@ -204,7 +204,7 @@ func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric
 		}
 		metrics[metric.TypeGauge.String()] = append(metrics[metric.TypeGauge.String()], m)
 	}
-	p.logger.Infof("debug: %v", metrics[metric.TypeGauge.String()])
+	//p.logger.Infof("debug: %v", metrics[metric.TypeGauge.String()])
 	rows, err = p.db.Query(ctx, queryGetAllCounter)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
@@ -219,7 +219,7 @@ func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric
 		}
 		metrics[metric.TypeCounter.String()] = append(metrics[metric.TypeCounter.String()], m)
 	}
-	p.logger.Infof("debug: %v", metrics[metric.TypeCounter.String()])
+	//p.logger.Infof("debug: %v", metrics[metric.TypeCounter.String()])
 
 	return metrics, nil
 }
@@ -233,7 +233,7 @@ func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.M
 				p.logger.Errorf("Database scan metric: %v error: %v. ", m, err)
 				return m, err
 			}
-			p.logger.Infof("debug delta: %v", m.Delta)
+			//p.logger.Infof("debug delta: %v", m.Delta)
 
 		}
 	case metric.TypeGauge.String():
@@ -242,7 +242,7 @@ func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.M
 				p.logger.Errorf("Database scan metric: %v error: %v. ", m, err)
 				return m, err
 			}
-			p.logger.Infof("debug value: %v", m.Value)
+			//p.logger.Infof("debug value: %v", m.Value)
 		}
 	default:
 		{
