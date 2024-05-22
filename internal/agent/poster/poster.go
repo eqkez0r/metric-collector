@@ -32,21 +32,23 @@ func (p *poster) Shutdown() {
 }
 
 func (p *poster) Post(requests <-chan *reqtype.ReqType) {
-	defer p.res.Reset()
-	defer p.logger.Infof("All requests were sent: %d. Errors: %d", p.res.All(), p.res.Errors())
 
 	var wg sync.WaitGroup
-
 	done := make(chan struct{})
-	defer close(done)
 
 	go p.errorLogger(done)
 	for i := 0; i < p.settings.RateLimit; i++ {
-		go p.postRequest(<-requests, &wg)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.postRequest(<-requests)
+		}()
 	}
 
 	wg.Wait()
-
+	p.logger.Infof("All requests were sent: %d. Errors: %d", p.res.All(), p.res.Errors())
+	defer p.res.Reset()
+	defer close(done)
 }
 
 func (p *poster) errorLogger(done chan struct{}) {
@@ -56,16 +58,16 @@ func (p *poster) errorLogger(done chan struct{}) {
 			return
 		case err := <-p.errChan:
 			p.logger.Error(err)
+		default:
 		}
+
 	}
 }
 
-func (p *poster) postRequest(r *reqtype.ReqType, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer p.res.IncAll()
-	defer wg.Done()
-	resp, err := r.Req.Post(r.Endpoint)
+func (p *poster) postRequest(r *reqtype.ReqType) {
 
+	resp, err := r.Req.Post(r.Endpoint)
+	p.res.IncAll()
 	if err != nil {
 		p.res.IncErrors()
 		p.errChan <- err

@@ -67,6 +67,7 @@ func (g *generator) Generate(mp metric.MetricMap) chan *reqtype.ReqType {
 	go g.pollMetricByBatch()
 	go g.pollEncodedMetricByBatch()
 
+	close(done)
 	return g.generatedRequests
 }
 
@@ -79,16 +80,28 @@ func (g *generator) errorLogger(done chan struct{}) {
 	for {
 		select {
 		case <-done:
+			g.logger.Info("generator was stopped")
 			return
 		case err := <-g.errChan:
 			g.logger.Error(err)
+		default:
+
 		}
 	}
 }
 
 func (g *generator) pollSingleMetric() error {
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	m := make(metric.MetricMap)
+	m[metric.TypeCounter] = make(map[metric.MetricName]string)
+	m[metric.TypeGauge] = make(map[metric.MetricName]string)
+	for k, v := range g.mp[metric.TypeCounter] {
+		m[metric.TypeCounter][k] = v
+	}
+	for k, v := range g.mp[metric.TypeGauge] {
+		m[metric.TypeGauge][k] = v
+	}
+	g.mu.Unlock()
 	for metricType, metricMap := range g.mp {
 		for metricName, metricValue := range metricMap {
 			g.logger.Infof("sending metric with type: %s, name: %s, value: %s",
@@ -162,35 +175,7 @@ func (g *generator) pollEncodeMetric(metricName, metricType, metricValue string)
 
 func (g *generator) pollMetricByBatch() error {
 	g.mu.Lock()
-	arr := []metric.Metrics{}
-	for k, v := range g.mp {
-		switch k {
-		case metric.TypeGauge:
-			{
-				for metricName, metricValue := range v {
-					val, err := strconv.ParseFloat(metricValue, 64)
-					if err != nil {
-						g.errChan <- err
-						continue
-					}
-					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Value: &val}
-					arr = append(arr, met)
-				}
-			}
-		case metric.TypeCounter:
-			{
-				for metricName, metricValue := range v {
-					val, err := strconv.ParseInt(metricValue, 10, 64)
-					if err != nil {
-						g.errChan <- err
-						continue
-					}
-					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Delta: &val}
-					arr = append(arr, met)
-				}
-			}
-		}
-	}
+	arr := g.prepareMetricArray()
 	g.mu.Unlock()
 	if len(arr) == 0 {
 		g.errChan <- ErrEmptyMetricBatch
@@ -214,35 +199,7 @@ func (g *generator) pollMetricByBatch() error {
 
 func (g *generator) pollEncodedMetricByBatch() error {
 	g.mu.Lock()
-	arr := []metric.Metrics{}
-	for k, v := range g.mp {
-		switch k {
-		case metric.TypeGauge:
-			{
-				for metricName, metricValue := range v {
-					val, err := strconv.ParseFloat(metricValue, 64)
-					if err != nil {
-						g.errChan <- err
-						continue
-					}
-					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Value: &val}
-					arr = append(arr, met)
-				}
-			}
-		case metric.TypeCounter:
-			{
-				for metricName, metricValue := range v {
-					val, err := strconv.ParseInt(metricValue, 10, 64)
-					if err != nil {
-						g.errChan <- err
-						continue
-					}
-					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Delta: &val}
-					arr = append(arr, met)
-				}
-			}
-		}
-	}
+	arr := g.prepareMetricArray()
 	g.mu.Unlock()
 	if len(arr) == 0 {
 		g.errChan <- ErrEmptyMetricBatch
@@ -321,6 +278,39 @@ func (g *generator) prepareJSONMetric(metricName, metricType, metricValue string
 		return nil, err
 	}
 	return b, nil
+}
+
+func (g *generator) prepareMetricArray() []metric.Metrics {
+	arr := []metric.Metrics{}
+	for k, v := range g.mp {
+		switch k {
+		case metric.TypeGauge:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseFloat(metricValue, 64)
+					if err != nil {
+						g.errChan <- err
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Value: &val}
+					arr = append(arr, met)
+				}
+			}
+		case metric.TypeCounter:
+			{
+				for metricName, metricValue := range v {
+					val, err := strconv.ParseInt(metricValue, 10, 64)
+					if err != nil {
+						g.errChan <- err
+						continue
+					}
+					met := metric.Metrics{ID: metricName.String(), MType: k.String(), Delta: &val}
+					arr = append(arr, met)
+				}
+			}
+		}
+	}
+	return arr
 }
 
 func (g *generator) compress(b []byte) ([]byte, error) {

@@ -27,8 +27,6 @@ func NewPoller(logger *zap.SugaredLogger) *poller {
 }
 
 func (p *poller) Poll() metric.MetricMap {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	p.wg.Add(2)
 	go p.updateRuntime()
