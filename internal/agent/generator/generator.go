@@ -102,7 +102,7 @@ func (g *generator) pollSingleMetric() error {
 		m[metric.TypeGauge][k] = v
 	}
 	g.mu.Unlock()
-	for metricType, metricMap := range g.mp {
+	for metricType, metricMap := range m {
 		for metricName, metricValue := range metricMap {
 			g.logger.Infof("sending metric with type: %s, name: %s, value: %s",
 				metricType, metricName, metricValue)
