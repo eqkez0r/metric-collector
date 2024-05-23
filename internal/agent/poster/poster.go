@@ -59,6 +59,8 @@ func (p *poster) errorLogger(done chan struct{}) {
 		case err := <-p.errChan:
 			p.logger.Error(err)
 		default:
+			{
+			}
 		}
 
 	}
