@@ -34,9 +34,9 @@ func New(
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.RedirectFixedPath = true
 	var conn *pgxpool.Pool = nil
 	var err error
-
 	if s.DatabaseDSN != "" {
 		conn, err = pgxpool.New(ctx, s.DatabaseDSN)
 		if err != nil {
@@ -47,14 +47,14 @@ func New(
 
 	logger.Infof("Server initing with %s storage", storage.Type())
 
-	r.Use(middleware.Logger(logger), middleware.Gzip(logger))
+	r.Use(middleware.Logger(logger), middleware.Hash(logger, s.HashKey), middleware.Gzip(logger))
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
-	r.GET("/value/:type/:name", h.GETMetricHandler(logger, storage))
-	r.GET("/ping", h.Ping(logger, conn))
-	r.POST("/update/:type/:name/:value", h.POSTMetricHandler(logger, storage))
-	r.POST("/update", h.POSTMetricJSONHandler(logger, storage))
-	r.POST("/value", h.GetMetricJSONHandler(logger, storage))
-	r.POST("/updates", h.PostMetricUpdates(logger, storage))
+	r.GET("/value/:type/:name/", h.GETMetricHandler(logger, storage))
+	r.GET("/ping/", h.Ping(logger, conn))
+	r.POST("/update/:type/:name/:value/", h.POSTMetricHandler(logger, storage))
+	r.POST("/update/", h.POSTMetricJSONHandler(logger, storage))
+	r.POST("/value/", h.GetMetricJSONHandler(logger, storage))
+	r.POST("/updates/", h.PostMetricUpdates(logger, storage))
 
 	return &HTTPServer{
 		server: &http.Server{
@@ -119,7 +119,6 @@ func (s *HTTPServer) Run(ctx context.Context) {
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
 			s.logger.Errorf("Server error: %v", err)
-			os.Exit(1)
 		}
 	}()
 
@@ -130,14 +129,15 @@ func (s *HTTPServer) Run(ctx context.Context) {
 
 	<-ctx.Done()
 	s.wg.Wait()
+	s.Shutdown(ctx)
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) {
 	s.logger.Infof("Server was stopped.")
+	err := s.server.Shutdown(ctx)
 	if s.conn != nil {
 		s.conn.Close()
 	}
-	err := s.server.Shutdown(ctx)
 	if err != nil {
 		s.logger.Errorf("Server shutdown error: %v", err)
 	}

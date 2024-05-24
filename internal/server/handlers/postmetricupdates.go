@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-var (
+const (
 	errPostMetricUpdates = "error in POST /updates: " // error in POST /update
 )
 
@@ -18,8 +18,9 @@ func PostMetricUpdates(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
+		logger.Infof("/updates: recieving metrics batch")
 		if context.ContentType() != "application/json" {
-			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, context.ContentType())
+			logger.Errorf("%s: unknown content type %s", errPostMetricUpdates, context.ContentType())
 			context.Status(http.StatusBadRequest)
 			return
 		}

@@ -36,5 +36,5 @@ func main() {
 		sugarLogger.Fatal(err)
 	}
 	server.Run(ctx)
-	defer server.Shutdown(ctx)
+
 }

@@ -11,6 +11,8 @@ type AgentConfig struct {
 	AgentEndpoint  string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	HashKey        string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 const (
@@ -22,6 +24,8 @@ func NewAgentConfig() (*AgentConfig, error) {
 	flag.StringVar(&cfg.AgentEndpoint, "a", defaultAddr, "agent endpoint")
 	flag.IntVar(&cfg.ReportInterval, "r", defaultReportInterval, "report interval in seconds")
 	flag.IntVar(&cfg.PollInterval, "p", defaultPollInterval, "poll interval in seconds")
+	flag.StringVar(&cfg.HashKey, "k", "", "hash key")
+	flag.IntVar(&cfg.RateLimit, "l", defaultRateLimit, "rate limit")
 	flag.Parse()
 	if len(flag.Args()) != 0 {
 		return nil, errors.New(errPointNewAgentConfig + errUnexpectedArguments.Error())

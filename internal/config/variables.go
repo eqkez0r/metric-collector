@@ -16,4 +16,5 @@ const (
 	defaultRestoreVal     = true
 	defaultPollInterval   = 2
 	defaultReportInterval = 10
+	defaultRateLimit      = 100
 )

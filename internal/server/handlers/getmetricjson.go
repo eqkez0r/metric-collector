@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-var (
+const (
 	errPointGetMetricJSON = "error in POST /value: "
 )
 
@@ -17,7 +17,7 @@ func GetMetricJSONHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-
+		logger.Info("/value: get metric json")
 		var m metric.Metrics
 		var err error
 		ct := context.GetHeader("Content-Type")

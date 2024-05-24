@@ -17,7 +17,7 @@ func POSTMetricHandler(
 	logger *zap.SugaredLogger,
 	s storage.Storage) gin.HandlerFunc {
 	return func(context *gin.Context) {
-
+		logger.Infof("/update/:type/:name/:value post metric")
 		metricType := context.Param("type")
 		metricName := context.Param("name")
 

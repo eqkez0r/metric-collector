@@ -1,4 +1,4 @@
-package compress
+package writers
 
 import (
 	"github.com/gin-gonic/gin"

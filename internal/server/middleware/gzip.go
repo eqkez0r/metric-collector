@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/Eqke/metric-collector/internal/compress"
+	"github.com/Eqke/metric-collector/internal/server/writers"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -33,7 +33,7 @@ func Gzip(
 			w := context.Writer
 			gzipWriter := gzip.NewWriter(w)
 			defer gzipWriter.Close()
-			wd := compress.GzipWriter{
+			wd := writers.GzipWriter{
 				ResponseWriter: context.Writer,
 				Writer:         gzipWriter,
 			}
