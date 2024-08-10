@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/Eqke/metric-collector/internal/storage"
+	"context"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
@@ -13,9 +13,14 @@ const (
 	errPointGetMetricJSON = "error in POST /value: "
 )
 
+//go:generate moq -out jsonMetricProvider_moq_test.go . JSONMetricProvider
+type JSONMetricProvider interface {
+	GetMetric(context.Context, metric.Metrics) (metric.Metrics, error)
+}
+
 func GetMetricJSONHandler(
 	logger *zap.SugaredLogger,
-	s storage.Storage) gin.HandlerFunc {
+	s JSONMetricProvider) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Info("/value: get metric json")
 		var m metric.Metrics

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/Eqke/metric-collector/internal/storage"
+	"context"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
@@ -13,9 +13,14 @@ const (
 	errPointPostMetric = "error in POST /update/:type/:name/:value"
 )
 
+//go:generate moq -out newMetricProvider_moq_test.go . NewMetricProvider
+type NewMetricProvider interface {
+	SetValue(context.Context, string, string, string) error
+}
+
 func POSTMetricHandler(
 	logger *zap.SugaredLogger,
-	s storage.Storage) gin.HandlerFunc {
+	s NewMetricProvider) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Infof("/update/:type/:name/:value post metric")
 		metricType := context.Param("type")

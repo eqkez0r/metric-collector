@@ -10,27 +10,6 @@ import (
 	"time"
 )
 
-type Metrics struct {
-	ID    string   `json:"id"`
-	MType string   `json:"type"`
-	Delta *int64   `json:"delta,omitempty"`
-	Value *float64 `json:"value,omitempty"`
-}
-
-type MetricName string
-
-func (m MetricName) String() string {
-	return string(m)
-}
-
-type TypeMetric string
-
-func (t TypeMetric) String() string {
-	return string(t)
-}
-
-type MetricMap map[TypeMetric]map[MetricName]string
-
 const (
 	PollCount = MetricName("PollCount")
 
@@ -69,6 +48,27 @@ const (
 	TypeGauge   = TypeMetric("gauge")
 	TypeCounter = TypeMetric("counter")
 )
+
+type Metrics struct {
+	ID    string   `json:"id"`
+	MType string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
+
+type MetricName string
+
+func (m MetricName) String() string {
+	return string(m)
+}
+
+type TypeMetric string
+
+func (t TypeMetric) String() string {
+	return string(t)
+}
+
+type MetricMap map[TypeMetric]map[MetricName]string
 
 func UpdateRuntimeMetrics(ms *runtime.MemStats, mp MetricMap) {
 	runtime.ReadMemStats(ms)

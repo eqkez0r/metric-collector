@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
@@ -14,9 +15,14 @@ const (
 	errPointPostMetricJSON = "error in POST /update: "
 )
 
+//go:generate moq -out newJSONMetricProvider_moq_test.go . NewJSONMetricProvider
+type NewJSONMetricProvider interface {
+	SetMetric(context.Context, metric.Metrics) error
+}
+
 func POSTMetricJSONHandler(
 	logger *zap.SugaredLogger,
-	s storage.Storage) gin.HandlerFunc {
+	s NewJSONMetricProvider) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		logger.Infof("/update: recieving metrics batch")
 		if context.ContentType() != "application/json" {
