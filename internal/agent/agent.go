@@ -97,6 +97,10 @@ func (a *Agent) Run(ctx context.Context) {
 				a.mu.Unlock()
 				a.logger.Info("posting... done")
 			}
+		default:
+			{
+
+			}
 		}
 	}
 }

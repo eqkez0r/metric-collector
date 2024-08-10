@@ -36,10 +36,10 @@ type Metric struct {
 type Storage interface {
 	SetValue(context.Context, string, string, string) error
 	SetMetric(context.Context, metric.Metrics) error
+	SetMetrics(context.Context, []metric.Metrics) error
 	GetValue(context.Context, string, string) (string, error)
 	GetMetrics(context.Context) (map[string][]Metric, error)
 	GetMetric(context.Context, metric.Metrics) (metric.Metrics, error)
-	SetMetrics(context.Context, []metric.Metrics) error
 	ToJSON(context.Context) ([]byte, error)
 	FromJSON(context.Context, []byte) error
 	ToFile(context.Context, string) error

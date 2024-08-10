@@ -63,7 +63,7 @@ func (g *generator) Generate(mp metric.MetricMap) chan *reqtype.ReqType {
 
 	go g.errorLogger(done)
 
-	//go g.pollSingleMetric()
+	go g.pollSingleMetric()
 	go g.pollMetricByBatch()
 	go g.pollEncodedMetricByBatch()
 

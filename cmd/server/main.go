@@ -11,9 +11,11 @@ import (
 	"syscall"
 
 	_ "net/http/pprof"
+	_ "runtime/pprof"
 )
 
 func main() {
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatal(err)
