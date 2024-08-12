@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+
 	"github.com/Eqke/metric-collector/pkg/metric"
 )
 
@@ -28,11 +29,6 @@ var (
 	ErrPointClose             = "error in storage.Close(): "
 )
 
-type Metric struct {
-	Name  string
-	Value string
-}
-
 type Storage interface {
 	SetValue(context.Context, string, string, string) error
 	SetMetric(context.Context, metric.Metrics) error
@@ -46,4 +42,9 @@ type Storage interface {
 	FromFile(context.Context, string) error
 	Type() string
 	Close() error
+}
+
+type Metric struct {
+	Name  string
+	Value string
 }

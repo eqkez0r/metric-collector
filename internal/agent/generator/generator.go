@@ -5,17 +5,18 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"github.com/Eqke/metric-collector/internal/agent/reqtype"
-	"github.com/Eqke/metric-collector/internal/config"
-	"github.com/Eqke/metric-collector/pkg/metric"
-	"github.com/Eqke/metric-collector/utils/hash"
-	"github.com/go-resty/resty/v2"
-	"go.uber.org/zap"
+	"github.com/Eqke/metric-collector/internal/agent/config"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Eqke/metric-collector/internal/agent/reqtype"
+	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/Eqke/metric-collector/utils/hash"
+	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -27,19 +28,24 @@ var (
 	ErrUnknownMetricType = errors.New("unknown metric type")
 )
 
-type generator struct {
+type MetricGenerator interface {
+	Generate(mp metric.Map) chan *reqtype.ReqType
+	Shutdown()
+}
+
+type Generator struct {
 	logger            *zap.SugaredLogger
 	mu                sync.Mutex
 	settings          *config.AgentConfig
 	generatedRequests chan *reqtype.ReqType
-	mp                metric.MetricMap
+	mp                metric.Map
 	errChan           chan error
 	client            *resty.Client
 }
 
 func NewGenerator(
 	logger *zap.SugaredLogger,
-	settings *config.AgentConfig) *generator {
+	settings *config.AgentConfig) *Generator {
 	client := resty.New()
 	client.SetRetryCount(3)
 	client.SetRetryWaitTime(1 * time.Second)
@@ -47,7 +53,7 @@ func NewGenerator(
 		return c.RetryWaitTime + 2*time.Duration(r.Request.Attempt)*time.Second, nil
 	})
 	client.SetRetryMaxWaitTime(5 * time.Second)
-	return &generator{
+	return &Generator{
 		logger:            logger,
 		settings:          settings,
 		generatedRequests: make(chan *reqtype.ReqType, settings.RateLimit),
@@ -57,7 +63,7 @@ func NewGenerator(
 	}
 }
 
-func (g *generator) Generate(mp metric.MetricMap) chan *reqtype.ReqType {
+func (g *Generator) Generate(mp metric.Map) chan *reqtype.ReqType {
 	g.mp = mp
 	done := make(chan struct{})
 
@@ -71,12 +77,12 @@ func (g *generator) Generate(mp metric.MetricMap) chan *reqtype.ReqType {
 	return g.generatedRequests
 }
 
-func (g *generator) Shutdown() {
+func (g *Generator) Shutdown() {
 	close(g.generatedRequests)
 	close(g.errChan)
 }
 
-func (g *generator) errorLogger(done chan struct{}) {
+func (g *Generator) errorLogger(done chan struct{}) {
 	for {
 		select {
 		case <-done:
@@ -92,11 +98,11 @@ func (g *generator) errorLogger(done chan struct{}) {
 	}
 }
 
-func (g *generator) pollSingleMetric() error {
+func (g *Generator) pollSingleMetric() {
 	g.mu.Lock()
-	m := make(metric.MetricMap)
-	m[metric.TypeCounter] = make(map[metric.MetricName]string)
-	m[metric.TypeGauge] = make(map[metric.MetricName]string)
+	m := make(metric.Map)
+	m[metric.TypeCounter] = make(map[metric.Name]string)
+	m[metric.TypeGauge] = make(map[metric.Name]string)
 	for k, v := range g.mp[metric.TypeCounter] {
 		m[metric.TypeCounter][k] = v
 	}
@@ -128,16 +134,15 @@ func (g *generator) pollSingleMetric() error {
 			}
 		}
 	}
-	return nil
 }
 
-func (g *generator) pollUsualMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
+func (g *Generator) pollUsualMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	endPoint := g.getEndpointToUsualMetric(metricType, metricName, metricValue)
 	req := g.client.R().SetHeader("Content-Type", "text/plain")
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
-func (g *generator) pollJSONMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
+func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	b, err := g.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
 		return nil, err
@@ -153,7 +158,7 @@ func (g *generator) pollJSONMetric(metricName, metricType, metricValue string) (
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
-func (g *generator) pollEncodeMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
+func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	b, err := g.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
 		return nil, err
@@ -175,13 +180,13 @@ func (g *generator) pollEncodeMetric(metricName, metricType, metricValue string)
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
-func (g *generator) pollMetricByBatch() error {
+func (g *Generator) pollMetricByBatch() {
 	g.mu.Lock()
 	arr := g.prepareMetricArray()
 	g.mu.Unlock()
 	if len(arr) == 0 {
 		g.errChan <- ErrEmptyMetricBatch
-		return ErrEmptyMetricBatch
+		return
 	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
@@ -190,32 +195,31 @@ func (g *generator) pollMetricByBatch() error {
 		b, err := json.Marshal(arr)
 		if err != nil {
 			g.errChan <- err
-			return err
+			return
 		}
 		req = req.SetHeader("HashSHA256", hash.Sign(b, g.settings.HashKey))
 	}
 	endpoint := g.getEndpointToBatchMetric()
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: endpoint}
-	return nil
 }
 
-func (g *generator) pollEncodedMetricByBatch() error {
+func (g *Generator) pollEncodedMetricByBatch() {
 	g.mu.Lock()
 	arr := g.prepareMetricArray()
 	g.mu.Unlock()
 	if len(arr) == 0 {
 		g.errChan <- ErrEmptyMetricBatch
-		return ErrEmptyMetricBatch
+		return
 	}
 	b, err := json.Marshal(arr)
 	if err != nil {
 		g.errChan <- err
-		return err
+		return
 	}
 	encoded, err := g.compress(b)
 	if err != nil {
 		g.errChan <- err
-		return err
+		return
 	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
@@ -225,22 +229,21 @@ func (g *generator) pollEncodedMetricByBatch() error {
 		req = req.SetHeader("HashSHA256", hash.Sign(encoded, g.settings.HashKey))
 	}
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
-	return nil
 }
 
-func (g *generator) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
+func (g *Generator) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
 }
 
-func (g *generator) getEndpointToJSONMetric() string {
+func (g *Generator) getEndpointToJSONMetric() string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update"}, "/")
 }
 
-func (g *generator) getEndpointToBatchMetric() string {
+func (g *Generator) getEndpointToBatchMetric() string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "updates"}, "/")
 }
 
-func (g *generator) prepareJSONMetric(metricName, metricType, metricValue string) ([]byte, error) {
+func (g *Generator) prepareJSONMetric(metricName, metricType, metricValue string) ([]byte, error) {
 	m := metric.Metrics{
 		ID:    metricName,
 		MType: metricType,
@@ -282,8 +285,8 @@ func (g *generator) prepareJSONMetric(metricName, metricType, metricValue string
 	return b, nil
 }
 
-func (g *generator) prepareMetricArray() []metric.Metrics {
-	arr := []metric.Metrics{}
+func (g *Generator) prepareMetricArray() []metric.Metrics {
+	arr := make([]metric.Metrics, 0, len(g.mp))
 	for k, v := range g.mp {
 		switch k {
 		case metric.TypeGauge:
@@ -315,7 +318,7 @@ func (g *generator) prepareMetricArray() []metric.Metrics {
 	return arr
 }
 
-func (g *generator) compress(b []byte) ([]byte, error) {
+func (g *Generator) compress(b []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	gz := gzip.NewWriter(buf)
 
@@ -328,7 +331,7 @@ func (g *generator) compress(b []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (g *generator) decompress(b []byte) ([]byte, error) {
+func (g *Generator) decompress(b []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(b)
 	gz, err := gzip.NewReader(buf)
 	if err != nil {

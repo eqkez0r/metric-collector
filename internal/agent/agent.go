@@ -2,52 +2,30 @@ package agent
 
 import (
 	"context"
-	"errors"
-	"github.com/Eqke/metric-collector/internal/agent/generator"
-	"github.com/Eqke/metric-collector/internal/agent/poller"
-	"github.com/Eqke/metric-collector/internal/agent/poster"
-	"github.com/Eqke/metric-collector/internal/agent/reqtype"
-	"github.com/Eqke/metric-collector/internal/config"
-	"github.com/Eqke/metric-collector/pkg/metric"
-	"github.com/go-resty/resty/v2"
-	"go.uber.org/zap"
+	"github.com/Eqke/metric-collector/internal/agent/config"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/Eqke/metric-collector/internal/agent/generator"
+	"github.com/Eqke/metric-collector/internal/agent/poller"
+	"github.com/Eqke/metric-collector/internal/agent/poster"
+	"github.com/Eqke/metric-collector/pkg/metric"
+	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 )
-
-const (
-	errPointPostMetrics = "error in agent.postMetrics(): "
-)
-
-var (
-	ErrUnknownMetricType = errors.New("unknown metric type")
-)
-
-type MetricPoller interface {
-	Poll() metric.MetricMap
-}
-
-type MetricGenerator interface {
-	Generate(mp metric.MetricMap) chan *reqtype.ReqType
-	Shutdown()
-}
-
-type MetricPoster interface {
-	Post(requests <-chan *reqtype.ReqType)
-}
 
 type Agent struct {
 	logger      *zap.SugaredLogger
 	settings    *config.AgentConfig
 	client      *resty.Client
 	pollCounter int64
-	mp          metric.MetricMap
+	mp          metric.Map
 	mu          sync.RWMutex
 
-	poller    MetricPoller
-	generator MetricGenerator
-	poster    MetricPoster
+	poller    poller.MetricPoller
+	generator generator.MetricGenerator
+	poster    poster.MetricPoster
 }
 
 func New(
@@ -60,7 +38,7 @@ func New(
 		settings:    settings,
 		client:      client,
 		pollCounter: 0,
-		mp:          make(metric.MetricMap),
+		mp:          make(metric.Map),
 		poller:      poller.NewPoller(logger),
 		generator:   generator.NewGenerator(logger, settings),
 		poster:      poster.NewPoster(logger, settings),

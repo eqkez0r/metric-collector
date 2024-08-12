@@ -2,20 +2,19 @@ package httpserver
 
 import (
 	"context"
-	"github.com/Eqke/metric-collector/internal/config"
-	h "github.com/Eqke/metric-collector/internal/server/handlers"
-	"github.com/Eqke/metric-collector/internal/server/middleware"
-	stor "github.com/Eqke/metric-collector/internal/storage"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
+	"github.com/Eqke/metric-collector/internal/server/config"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"sync"
 	"time"
 
-	_ "net/http/pprof"
+	h "github.com/Eqke/metric-collector/internal/server/handlers"
+	"github.com/Eqke/metric-collector/internal/server/middleware"
+	stor "github.com/Eqke/metric-collector/internal/storage"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type HTTPServer struct {
@@ -50,7 +49,9 @@ func New(
 
 	logger.Infof("Server initing with %s storage", storage.Type())
 
+	//usage middleware
 	r.Use(middleware.Logger(logger), middleware.Hash(logger, s.HashKey), middleware.Gzip(logger))
+
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name/", h.GETMetricHandler(logger, storage))
 	r.GET("/ping/", h.Ping(logger, conn))
@@ -78,7 +79,7 @@ func New(
 
 	return &HTTPServer{
 		server: &http.Server{
-			Addr:    s.Endpoint,
+			Addr:    s.Host,
 			Handler: r,
 		},
 		engine:   r,
@@ -134,7 +135,7 @@ func (s *HTTPServer) restore(ctx context.Context) {
 }
 
 func (s *HTTPServer) Run(ctx context.Context) {
-	s.logger.Infof("Server was started. Listening on: %s", s.settings.Endpoint)
+	s.logger.Infof("Server was started. Listening on: %s", s.settings.Host)
 
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
@@ -153,7 +154,7 @@ func (s *HTTPServer) Run(ctx context.Context) {
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) {
-	s.logger.Infof("Server was stopped.")
+	s.logger.Info("Server was stopped.")
 	err := s.server.Shutdown(ctx)
 	if s.conn != nil {
 		s.conn.Close()

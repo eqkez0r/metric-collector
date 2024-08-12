@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	store "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestRootMetric(t *testing.T) {

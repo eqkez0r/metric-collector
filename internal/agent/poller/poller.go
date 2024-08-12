@@ -1,24 +1,29 @@
 package poller
 
 import (
-	"github.com/Eqke/metric-collector/pkg/metric"
-	"go.uber.org/zap"
 	"runtime"
 	"sync"
+
+	"github.com/Eqke/metric-collector/pkg/metric"
+	"go.uber.org/zap"
 )
 
-type poller struct {
+type MetricPoller interface {
+	Poll() metric.Map
+}
+
+type Poller struct {
 	logger *zap.SugaredLogger
-	mp     map[metric.TypeMetric]map[metric.MetricName]string
+	mp     map[metric.MType]map[metric.Name]string
 	mu     sync.Mutex
 	wg     sync.WaitGroup
 }
 
-func NewPoller(logger *zap.SugaredLogger) *poller {
-	mp := make(metric.MetricMap)
-	mp[metric.TypeGauge] = make(map[metric.MetricName]string)
-	mp[metric.TypeCounter] = make(map[metric.MetricName]string)
-	return &poller{
+func NewPoller(logger *zap.SugaredLogger) *Poller {
+	mp := make(metric.Map)
+	mp[metric.TypeGauge] = make(map[metric.Name]string)
+	mp[metric.TypeCounter] = make(map[metric.Name]string)
+	return &Poller{
 		logger: logger,
 		mp:     mp,
 		mu:     sync.Mutex{},
@@ -26,7 +31,7 @@ func NewPoller(logger *zap.SugaredLogger) *poller {
 	}
 }
 
-func (p *poller) Poll() metric.MetricMap {
+func (p *Poller) Poll() metric.Map {
 
 	p.wg.Add(2)
 	go p.updateRuntime()
@@ -36,7 +41,7 @@ func (p *poller) Poll() metric.MetricMap {
 	return p.mp
 }
 
-func (p *poller) updateRuntime() {
+func (p *Poller) updateRuntime() {
 	defer p.wg.Done()
 	ms := &runtime.MemStats{}
 	runtime.ReadMemStats(ms)
@@ -44,9 +49,11 @@ func (p *poller) updateRuntime() {
 
 }
 
-func (p *poller) updateUtil() {
+func (p *Poller) updateUtil() {
 	defer p.wg.Done()
 	if err := metric.UpdateUtilMetrics(p.mp); err != nil {
 		p.logger.Errorf("UpdateUtilMetrics error: %v", err)
 	}
 }
+
+var _ MetricPoller = (*Poller)(nil)

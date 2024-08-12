@@ -1,15 +1,28 @@
 package config
 
 import (
+	"errors"
 	"flag"
+	"os"
+
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/ilyakaznacheev/cleanenv"
-	"log"
-	"os"
+)
+
+const (
+	errPointNewServerConfig = "error in NewServerConfig(): "
+
+	defaultAddr          = "localhost:8080"
+	defaultStoreInterval = 300
+	defaultRestoreVal    = true
+)
+
+var (
+	ErrUnexpectedArguments = errors.New("unexpected arguments")
 )
 
 type ServerConfig struct {
-	Endpoint        string `env:"ADDRESS"`
+	Host            string `env:"ADDRESS"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
@@ -17,14 +30,10 @@ type ServerConfig struct {
 	HashKey         string `env:"KEY"`
 }
 
-const (
-	errPointNewServerConfig = "error in NewServerConfig(): "
-)
-
 func NewServerConfig() (*ServerConfig, error) {
 	cfg := &ServerConfig{}
 	defaultStorePath := os.TempDir() + "/metrics-db.json"
-	flag.StringVar(&cfg.Endpoint, "a", defaultAddr, "server endpoint")
+	flag.StringVar(&cfg.Host, "a", defaultAddr, "server host")
 	flag.IntVar(&cfg.StoreInterval, "i", defaultStoreInterval, "store interval in seconds")
 	flag.StringVar(&cfg.FileStoragePath, "f", defaultStorePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", defaultRestoreVal, "restore")
@@ -33,12 +42,12 @@ func NewServerConfig() (*ServerConfig, error) {
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {
-		return nil, errUnexpectedArguments
+		return nil, e.WrapError(errPointNewServerConfig, ErrUnexpectedArguments)
 	}
 	err := cleanenv.ReadEnv(cfg)
 	if err != nil {
 		return nil, e.WrapError(errPointNewServerConfig, err)
 	}
-	log.Println(cfg)
+
 	return cfg, nil
 }

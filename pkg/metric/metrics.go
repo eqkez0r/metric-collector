@@ -1,52 +1,51 @@
 package metric
 
 import (
-	"fmt"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
 	"math/rand"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
 const (
-	PollCount = MetricName("PollCount")
+	PollCount = Name("PollCount")
 
-	Alloc           = MetricName("Alloc")
-	BuckHashSys     = MetricName("BuckHashSys")
-	Frees           = MetricName("Frees")
-	GCCPUFraction   = MetricName("GCCPUFraction")
-	GCSys           = MetricName("GCSys")
-	HeapAlloc       = MetricName("HeapAlloc")
-	HeapIdle        = MetricName("HeapIdle")
-	HeapInuse       = MetricName("HeapInuse")
-	HeapObjects     = MetricName("HeapObjects")
-	HeapReleased    = MetricName("HeapReleased")
-	HeapSys         = MetricName("HeapSys")
-	LastGC          = MetricName("LastGC")
-	Lookups         = MetricName("Lookups")
-	MCacheInuse     = MetricName("MCacheInuse")
-	MCacheSys       = MetricName("MCacheSys")
-	MSpanInuse      = MetricName("MSpanInuse")
-	MSpanSys        = MetricName("MSpanSys")
-	Mallocs         = MetricName("Mallocs")
-	NextGC          = MetricName("NextGC")
-	NumForcedGC     = MetricName("NumForcedGC")
-	NumGC           = MetricName("NumGC")
-	OtherSys        = MetricName("OtherSys")
-	PauseTotalNs    = MetricName("PauseTotalNs")
-	StackInuse      = MetricName("StackInuse")
-	StackSys        = MetricName("StackSys")
-	Sys             = MetricName("Sys")
-	TotalAlloc      = MetricName("TotalAlloc")
-	RandomValue     = MetricName("RandomValue")
-	TotalMemory     = MetricName("TotalMemory")
-	FreeMemory      = MetricName("FreeMemory")
-	CPUUtilization1 = MetricName("CPUUtilization1")
+	Alloc         = Name("Alloc")
+	BuckHashSys   = Name("BuckHashSys")
+	Frees         = Name("Frees")
+	GCCPUFraction = Name("GCCPUFraction")
+	GCSys         = Name("GCSys")
+	HeapAlloc     = Name("HeapAlloc")
+	HeapIdle      = Name("HeapIdle")
+	HeapInuse     = Name("HeapInuse")
+	HeapObjects   = Name("HeapObjects")
+	HeapReleased  = Name("HeapReleased")
+	HeapSys       = Name("HeapSys")
+	LastGC        = Name("LastGC")
+	Lookups       = Name("Lookups")
+	MCacheInuse   = Name("MCacheInuse")
+	MCacheSys     = Name("MCacheSys")
+	MSpanInuse    = Name("MSpanInuse")
+	MSpanSys      = Name("MSpanSys")
+	Mallocs       = Name("Mallocs")
+	NextGC        = Name("NextGC")
+	NumForcedGC   = Name("NumForcedGC")
+	NumGC         = Name("NumGC")
+	OtherSys      = Name("OtherSys")
+	PauseTotalNs  = Name("PauseTotalNs")
+	StackInuse    = Name("StackInuse")
+	StackSys      = Name("StackSys")
+	Sys           = Name("Sys")
+	TotalAlloc    = Name("TotalAlloc")
+	RandomValue   = Name("RandomValue")
+	TotalMemory   = Name("TotalMemory")
+	FreeMemory    = Name("FreeMemory")
 
-	TypeGauge   = TypeMetric("gauge")
-	TypeCounter = TypeMetric("counter")
+	TypeGauge   = MType("gauge")
+	TypeCounter = MType("counter")
 )
 
 type Metrics struct {
@@ -56,21 +55,21 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
-type MetricName string
+type Name string
 
-func (m MetricName) String() string {
+func (m Name) String() string {
 	return string(m)
 }
 
-type TypeMetric string
+type MType string
 
-func (t TypeMetric) String() string {
+func (t MType) String() string {
 	return string(t)
 }
 
-type MetricMap map[TypeMetric]map[MetricName]string
+type Map map[MType]map[Name]string
 
-func UpdateRuntimeMetrics(ms *runtime.MemStats, mp MetricMap) {
+func UpdateRuntimeMetrics(ms *runtime.MemStats, mp Map) {
 	runtime.ReadMemStats(ms)
 	mp[TypeGauge][Alloc] = strconv.FormatFloat(float64(ms.Alloc), 'f', -1, 64)
 	mp[TypeGauge][BuckHashSys] = strconv.FormatFloat(float64(ms.BuckHashSys), 'f', -1, 64)
@@ -103,7 +102,7 @@ func UpdateRuntimeMetrics(ms *runtime.MemStats, mp MetricMap) {
 
 }
 
-func UpdateUtilMetrics(mp MetricMap) error {
+func UpdateUtilMetrics(mp Map) error {
 	m, err := mem.VirtualMemory()
 	if err != nil {
 		return err
@@ -115,7 +114,7 @@ func UpdateUtilMetrics(mp MetricMap) error {
 	mp[TypeGauge][TotalMemory] = strconv.FormatUint(m.Free, 10)
 	mp[TypeGauge][FreeMemory] = strconv.FormatUint(m.Free, 10)
 	for i, v := range cpu {
-		name := MetricName(fmt.Sprintf("CPUutilization%d", i))
+		name := Name("CPUutilization" + strconv.Itoa(i))
 		mp[TypeGauge][name] = strconv.FormatFloat(v, 'f', -1, 64)
 	}
 	return nil

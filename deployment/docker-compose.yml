@@ -3,17 +3,17 @@
 services:
   builder:
     build:
-      context: .
+      context: ..
       target: builder
 
   server_img:
     build:
-      context: .
+      context: ..
       target: server_runner
 
   agent_img:
     build:
-      context: .
+      context: ..
       target: agent_runner
 
   server:

@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"github.com/Eqke/metric-collector/internal/config"
-	httpserver "github.com/Eqke/metric-collector/internal/server"
-	"github.com/Eqke/metric-collector/internal/storagemanager"
-	"go.uber.org/zap"
+	"github.com/Eqke/metric-collector/internal/server/config"
 	"log"
 	"os/signal"
 	"syscall"
 
+	httpserver "github.com/Eqke/metric-collector/internal/server"
+	"github.com/Eqke/metric-collector/internal/storagemanager"
+	"go.uber.org/zap"
+
 	_ "net/http/pprof"
-	_ "runtime/pprof"
 )
 
 func main() {

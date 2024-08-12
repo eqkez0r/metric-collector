@@ -2,18 +2,19 @@ package middleware
 
 import (
 	"compress/gzip"
+	"net/http"
+	"strings"
+
 	"github.com/Eqke/metric-collector/internal/server/writers"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
 )
 
 const (
 	errPointGzipDecode = "error in gzip decode handler: "
 )
 
-var avaliableTypes = map[string]bool{
+var availableTypes = map[string]bool{
 	"text/html":        true,
 	"application/json": true,
 	"html/text":        true,
@@ -22,38 +23,38 @@ var avaliableTypes = map[string]bool{
 func Gzip(
 	logger *zap.SugaredLogger,
 ) gin.HandlerFunc {
-	return func(context *gin.Context) {
+	return func(c *gin.Context) {
 
 		//compress response
-		ae := context.GetHeader("Accept-Encoding")
-		ct := context.GetHeader("Content-Type")
-		ac := context.GetHeader("Accept")
+		ae := c.GetHeader("Accept-Encoding")
+		ct := c.GetHeader("Content-Type")
+		ac := c.GetHeader("Accept")
 		if (strings.Contains(ae, "gzip")) &&
-			(avaliableTypes[ct] || avaliableTypes[ac]) {
-			w := context.Writer
+			(availableTypes[ct] || availableTypes[ac]) {
+			w := c.Writer
 			gzipWriter := gzip.NewWriter(w)
 			defer gzipWriter.Close()
 			wd := writers.GzipWriter{
-				ResponseWriter: context.Writer,
+				ResponseWriter: c.Writer,
 				Writer:         gzipWriter,
 			}
-			context.Writer = wd
-			context.Writer.Header().Set("Content-Encoding", "gzip")
+			c.Writer = wd
+			c.Writer.Header().Set("Content-Encoding", "gzip")
 		}
 
 		//uncompressed request
-		ce := context.GetHeader("Content-Encoding")
+		ce := c.GetHeader("Content-Encoding")
 		if strings.Contains(ce, "gzip") {
-			gzipReader, err := gzip.NewReader(context.Request.Body)
+			gzipReader, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
 				logger.Errorf("%s: %v", errPointGzipDecode, err)
-				context.Status(http.StatusInternalServerError)
+				c.Status(http.StatusInternalServerError)
 				return
 			}
 			defer gzipReader.Close()
 
-			context.Request.Body = gzipReader
+			c.Request.Body = gzipReader
 		}
-		context.Next()
+		c.Next()
 	}
 }

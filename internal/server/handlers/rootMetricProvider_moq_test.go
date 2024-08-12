@@ -5,8 +5,9 @@ package handlers
 
 import (
 	"context"
-	store "github.com/Eqke/metric-collector/internal/storage"
 	"sync"
+
+	store "github.com/Eqke/metric-collector/internal/storage"
 )
 
 // Ensure, that RootMetricsProviderMock does implement RootMetricsProvider.

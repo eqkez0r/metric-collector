@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
+	"strconv"
+	"sync"
+
 	store "github.com/Eqke/metric-collector/internal/storage"
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"go.uber.org/zap"
-	"os"
-	"strconv"
-	"sync"
 )
 
 const (
@@ -93,25 +94,27 @@ func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (s
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
-			if _, ok := s.storage.CounterMetrics[name]; !ok {
+			val, ok := s.storage.CounterMetrics[name]
+			if !ok {
 				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return "", store.ErrIsMetricDoesntExist
 			}
-			val := strconv.FormatInt(int64(s.storage.CounterMetrics[name]), 10)
+			v := strconv.FormatInt(int64(val), 10)
 			s.logger.Infof("metric was found with type: %s, name: %s, value: %s",
-				metricType, name, val)
-			return val, nil
+				metricType, name, v)
+			return v, nil
 		}
 	case metric.TypeGauge.String():
 		{
-			if _, ok := s.storage.GaugeMetrics[name]; !ok {
+			val, ok := s.storage.GaugeMetrics[name]
+			if !ok {
 				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return "", store.ErrIsMetricDoesntExist
 			}
-			val := strconv.FormatFloat(float64(s.storage.GaugeMetrics[name]), 'f', -1, 64)
+			v := strconv.FormatFloat(float64(val), 'f', -1, 64)
 			s.logger.Infof("metric was found with type: %s, name: %s, value: %s",
-				metricType, name, val)
-			return val, nil
+				metricType, name, v)
+			return v, nil
 		}
 	default:
 		{
@@ -169,9 +172,9 @@ func (s *LocalStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.
 func (s *LocalStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	metrics := make(map[string][]store.Metric, 0)
-	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0)
-	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0)
+	metrics := make(map[string][]store.Metric, 2)
+	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0, len(s.storage.CounterMetrics))
+	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0, len(s.storage.GaugeMetrics))
 	for name := range s.storage.CounterMetrics {
 		m := store.Metric{
 			Name:  name,
@@ -195,34 +198,8 @@ func (s *LocalStorage) SetMetrics(ctx context.Context, metrics []metric.Metrics)
 	for _, m := range metrics {
 		err := s.setMetric(ctx, m)
 		if err != nil {
+			s.logger.Error(store.ErrPointSetMetric, err)
 			return err
-		}
-	}
-	return nil
-}
-
-func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
-	if m.ID == "" {
-		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
-		return store.ErrIDIsEmpty
-	}
-
-	switch m.MType {
-	case metric.TypeCounter.String():
-		{
-			if m.Delta == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
-				return store.ErrValueIsEmpty
-			}
-			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
-		}
-	case metric.TypeGauge.String():
-		{
-			if m.Value == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
-				return store.ErrValueIsEmpty
-			}
-			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
 		}
 	}
 	return nil
@@ -268,4 +245,31 @@ func (s *LocalStorage) Close() error {
 
 func (s *LocalStorage) Type() string {
 	return TYPE
+}
+
+func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
+	if m.ID == "" {
+		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
+		return store.ErrIDIsEmpty
+	}
+
+	switch m.MType {
+	case metric.TypeCounter.String():
+		{
+			if m.Delta == nil {
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
+			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
+		}
+	case metric.TypeGauge.String():
+		{
+			if m.Value == nil {
+				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
+				return store.ErrValueIsEmpty
+			}
+			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
+		}
+	}
+	return nil
 }

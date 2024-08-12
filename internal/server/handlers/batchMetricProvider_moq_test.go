@@ -5,8 +5,9 @@ package handlers
 
 import (
 	"context"
-	"github.com/Eqke/metric-collector/pkg/metric"
 	"sync"
+
+	"github.com/Eqke/metric-collector/pkg/metric"
 )
 
 // Ensure, that BatchMetricProviderMock does implement BatchMetricProvider.

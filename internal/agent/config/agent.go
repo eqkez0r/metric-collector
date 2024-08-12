@@ -7,6 +7,19 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+const (
+	errPointNewAgentConfig = "error in NewAgentConfig(): "
+
+	defaultAddr           = "localhost:8080"
+	defaultPollInterval   = 2
+	defaultReportInterval = 10
+	defaultRateLimit      = 100
+)
+
+var (
+	ErrUnexpectedArguments = errors.New("unexpected arguments")
+)
+
 type AgentConfig struct {
 	AgentEndpoint  string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
@@ -14,10 +27,6 @@ type AgentConfig struct {
 	HashKey        string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
 }
-
-const (
-	errPointNewAgentConfig = "error in NewAgentConfig(): "
-)
 
 func NewAgentConfig() (*AgentConfig, error) {
 	cfg := &AgentConfig{}
@@ -28,7 +37,7 @@ func NewAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&cfg.RateLimit, "l", defaultRateLimit, "rate limit")
 	flag.Parse()
 	if len(flag.Args()) != 0 {
-		return nil, errors.New(errPointNewAgentConfig + errUnexpectedArguments.Error())
+		return nil, e.WrapError(errPointNewAgentConfig, ErrUnexpectedArguments)
 	}
 	err := cleanenv.ReadEnv(cfg)
 	if err != nil {

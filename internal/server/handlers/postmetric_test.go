@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"context"
-	store "github.com/Eqke/metric-collector/internal/storage"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
+
+	store "github.com/Eqke/metric-collector/internal/storage"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestPostMetric(t *testing.T) {

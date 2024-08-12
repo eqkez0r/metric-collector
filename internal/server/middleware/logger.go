@@ -1,41 +1,42 @@
 package middleware
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"time"
 )
 
 func Logger(
 	logger *zap.SugaredLogger,
 ) gin.HandlerFunc {
-	return func(context *gin.Context) {
+	return func(c *gin.Context) {
 
 		start := time.Now()
 
-		respData := &responseData{
+		data := &responseData{
 			status: 0,
 			size:   0,
 		}
 		lw := loggingResponseWriter{
-			ResponseWriter: context.Writer,
-			resData:        respData,
+			ResponseWriter: c.Writer,
+			resData:        data,
 		}
 
-		context.Writer = &lw
+		c.Writer = &lw
 
-		context.Next()
+		c.Next()
 
-		respData.status = context.Writer.Status()
-		respData.size = lw.Size()
+		data.status = c.Writer.Status()
+		data.size = lw.Size()
 
 		duration := time.Since(start)
 
 		logger.Infoln(
-			"URL", context.Request.URL,
-			"METHOD", context.Request.Method,
-			"STATUS", respData.status,
-			"SIZE", respData.size,
+			"URL", c.Request.URL,
+			"METHOD", c.Request.Method,
+			"STATUS", data.status,
+			"SIZE", data.size,
 			"DURATION", duration,
 		)
 	}
