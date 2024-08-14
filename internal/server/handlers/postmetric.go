@@ -21,7 +21,7 @@ type NewMetricProvider interface {
 
 func POSTMetricHandler(
 	logger *zap.SugaredLogger,
-	s NewMetricProvider) gin.HandlerFunc {
+	p NewMetricProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("/update/:type/:name/:value post metric")
 		metricType := c.Param("type")
@@ -42,7 +42,7 @@ func POSTMetricHandler(
 		logger.Infof("metric was received with type: %s, name: %s, value: %s",
 			metricType, metricName, metricValue)
 		err := retry.Retry(logger, 3, func() error {
-			return s.SetValue(c, metricType, metricName, metricValue)
+			return p.SetValue(c, metricType, metricName, metricValue)
 		})
 		if err != nil {
 			logger.Errorf("%s: %v", errPointPostMetric, err)

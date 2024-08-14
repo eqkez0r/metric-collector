@@ -35,7 +35,6 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 
 	db, err := pgxpool.New(ctx, conn)
 	if err != nil {
-		logger.Errorf("Database connection error: %v", err)
 		return nil, err
 	}
 
@@ -47,33 +46,28 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database ping error: %v", err)
 		return nil, err
 	}
 
 	err = retry.Retry(logger, 3, func() error {
 		_, err = db.Exec(ctx, queryCreateGauges)
 		if err != nil {
-			logger.Errorf("Database exec error: %v", err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database exec error: %v", err)
 		return nil, err
 	}
 
 	err = retry.Retry(logger, 3, func() error {
 		_, err = db.Exec(ctx, queryCreateCounters)
 		if err != nil {
-			logger.Errorf("Database exec error: %v", err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database exec error: %v", err)
 		return nil, err
 	}
 

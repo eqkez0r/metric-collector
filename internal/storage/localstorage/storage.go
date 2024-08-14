@@ -96,7 +96,6 @@ func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (s
 		{
 			val, ok := s.storage.CounterMetrics[name]
 			if !ok {
-				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return "", store.ErrIsMetricDoesntExist
 			}
 			v := strconv.FormatInt(int64(val), 10)
@@ -108,7 +107,6 @@ func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (s
 		{
 			val, ok := s.storage.GaugeMetrics[name]
 			if !ok {
-				s.logger.Error(store.ErrPointGetValue, store.ErrIsMetricDoesntExist)
 				return "", store.ErrIsMetricDoesntExist
 			}
 			v := strconv.FormatFloat(float64(val), 'f', -1, 64)
@@ -118,7 +116,6 @@ func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (s
 		}
 	default:
 		{
-			s.logger.Error(store.ErrPointGetValue, store.ErrIsUnknownType)
 			return "", e.WrapError(store.ErrPointGetValue, store.ErrIsUnknownType)
 		}
 	}
@@ -135,7 +132,6 @@ func (s *LocalStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.
 			var val metric.Counter
 			var ok bool
 			if val, ok = s.storage.CounterMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			delta := int64(val)
@@ -150,7 +146,6 @@ func (s *LocalStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.
 			var val metric.Gauge
 			var ok bool
 			if val, ok = s.storage.GaugeMetrics[m.ID]; !ok {
-				s.logger.Error(store.ErrPointGetMetric, store.ErrIsMetricDoesntExist)
 				return met, store.ErrIsMetricDoesntExist
 			}
 			value := float64(val)
@@ -162,7 +157,6 @@ func (s *LocalStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.
 		}
 	default:
 		{
-			s.logger.Error(store.ErrPointGetMetric, store.ErrIsUnknownType)
 			return met, e.WrapError(store.ErrPointGetMetric, store.ErrIsUnknownType)
 		}
 	}
@@ -198,7 +192,6 @@ func (s *LocalStorage) SetMetrics(ctx context.Context, metrics []metric.Metrics)
 	for _, m := range metrics {
 		err := s.setMetric(ctx, m)
 		if err != nil {
-			s.logger.Error(store.ErrPointSetMetric, err)
 			return err
 		}
 	}
@@ -249,7 +242,6 @@ func (s *LocalStorage) Type() string {
 
 func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 	if m.ID == "" {
-		s.logger.Error(store.ErrPointSetMetric, store.ErrIDIsEmpty)
 		return store.ErrIDIsEmpty
 	}
 
@@ -257,7 +249,6 @@ func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 	case metric.TypeCounter.String():
 		{
 			if m.Delta == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
 				return store.ErrValueIsEmpty
 			}
 			s.storage.CounterMetrics[m.ID] += metric.Counter(*m.Delta)
@@ -265,7 +256,6 @@ func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 	case metric.TypeGauge.String():
 		{
 			if m.Value == nil {
-				s.logger.Error(store.ErrPointSetMetric, store.ErrValueIsEmpty)
 				return store.ErrValueIsEmpty
 			}
 			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)

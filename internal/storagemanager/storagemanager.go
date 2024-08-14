@@ -3,9 +3,9 @@ package storagemanager
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/server/config"
+	"github.com/Eqke/metric-collector/internal/storage"
 	"os"
 
-	stor "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/internal/storage/localstorage"
 	"github.com/Eqke/metric-collector/internal/storage/postgres"
 	"go.uber.org/zap"
@@ -15,7 +15,7 @@ const (
 	ErrPointGetStorage = "error in storagemanager.GetStorage(): "
 )
 
-func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.ServerConfig) (stor.Storage, error) {
+func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.ServerConfig) (storage.Storage, error) {
 	switch {
 	case cfg.DatabaseDSN != "":
 		{
@@ -23,22 +23,22 @@ func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.Serv
 		}
 	default:
 		{
-			storage := localstorage.New(logger)
+			s := localstorage.New(logger)
 			if cfg.Restore {
-				if err := storage.FromFile(ctx, cfg.FileStoragePath); os.IsNotExist(err) {
-					err = creatingStorageFile(ctx, cfg, storage, logger)
+				if err := s.FromFile(ctx, cfg.FileStoragePath); os.IsNotExist(err) {
+					err = creatingStorageFile(ctx, cfg, s, logger)
 					if err != nil {
 						logger.Fatalf("%v: %v", ErrPointGetStorage, err)
 					}
 				} else {
-					err = storage.FromFile(ctx, cfg.FileStoragePath)
+					err = s.FromFile(ctx, cfg.FileStoragePath)
 					if err != nil {
 						logger.Fatalf("%v: %v", ErrPointGetStorage, err)
 					}
 				}
 			}
 			logger.Info("Successful read from file")
-			return storage, nil
+			return s, nil
 		}
 	}
 }

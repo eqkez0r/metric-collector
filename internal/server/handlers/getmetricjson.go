@@ -21,7 +21,7 @@ type JSONMetricProvider interface {
 
 func GetMetricJSONHandler(
 	logger *zap.SugaredLogger,
-	s JSONMetricProvider) gin.HandlerFunc {
+	p JSONMetricProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("/value: get metric json")
 		var m metric.Metrics
@@ -44,7 +44,7 @@ func GetMetricJSONHandler(
 			return
 		}
 		err = retry.Retry(logger, 3, func() error {
-			m, err = s.GetMetric(c, m)
+			m, err = p.GetMetric(c, m)
 			return err
 		})
 		if err != nil {

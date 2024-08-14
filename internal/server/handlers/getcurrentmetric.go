@@ -20,7 +20,7 @@ type CurrentMetricProvider interface {
 
 func GETMetricHandler(
 	logger *zap.SugaredLogger,
-	s CurrentMetricProvider) gin.HandlerFunc {
+	p CurrentMetricProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("/value/:type/:name get metric")
 		metricType := c.Param("type")
@@ -29,7 +29,7 @@ func GETMetricHandler(
 		var value string
 		var err error
 		err = retry.Retry(logger, 3, func() error {
-			value, err = s.GetValue(c, metricType, metricName)
+			value, err = p.GetValue(c, metricType, metricName)
 			return err
 		})
 		if err != nil {

@@ -23,7 +23,7 @@ type BatchMetricProvider interface {
 
 func PostMetricUpdates(
 	logger *zap.SugaredLogger,
-	s BatchMetricProvider) gin.HandlerFunc {
+	p BatchMetricProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("/updates: recieving metrics batch")
 		if c.ContentType() != "application/json" {
@@ -40,7 +40,7 @@ func PostMetricUpdates(
 
 		logger.Info("metrics batch was recieved")
 		if err := retry.Retry(logger, 3, func() error {
-			return s.SetMetrics(c, arr)
+			return p.SetMetrics(c, arr)
 		}); err != nil {
 			logger.Errorf("%s: %v", err, storage.ErrIsUnknownType)
 			if errors.Is(err, storage.ErrIsUnknownType) {

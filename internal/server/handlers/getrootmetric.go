@@ -22,13 +22,13 @@ type RootMetricsProvider interface {
 
 func GetRootMetricsHandler(
 	logger *zap.SugaredLogger,
-	storage RootMetricsProvider) gin.HandlerFunc {
+	p RootMetricsProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("root metrics handler was called")
 		var data map[string][]store.Metric
 		var err error
 		err = retry.Retry(logger, 3, func() error {
-			data, err = storage.GetMetrics(c)
+			data, err = p.GetMetrics(c)
 			return err
 		})
 		if err != nil {

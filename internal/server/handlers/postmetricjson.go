@@ -23,7 +23,7 @@ type NewJSONMetricProvider interface {
 
 func POSTMetricJSONHandler(
 	logger *zap.SugaredLogger,
-	s NewJSONMetricProvider) gin.HandlerFunc {
+	p NewJSONMetricProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Infof("/update: recieving metrics batch")
 		if c.ContentType() != "application/json" {
@@ -41,7 +41,7 @@ func POSTMetricJSONHandler(
 		logger.Info("metric was received", m)
 
 		if err := retry.Retry(logger, 3, func() error {
-			return s.SetMetric(c, m)
+			return p.SetMetric(c, m)
 		}); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			if errors.Is(err, storage.ErrIsUnknownType) {
