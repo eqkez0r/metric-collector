@@ -1,3 +1,4 @@
+// Пакет generator предоставляет работу с генератором запросов
 package generator
 
 import (
@@ -23,16 +24,19 @@ const (
 	errPointPostMetrics = "error in generator.postMetrics(): "
 )
 
+// Объявление
 var (
 	ErrEmptyMetricBatch  = errors.New("empty batch")
 	ErrUnknownMetricType = errors.New("unknown metric type")
 )
 
+// Интерфейс MetricGenerator предоставляет генератор запросов
 type MetricGenerator interface {
 	Generate(mp metric.Map) chan *reqtype.ReqType
 	Shutdown()
 }
 
+// Тип Generator является реализацией интерфейса MetricGenerator
 type Generator struct {
 	logger            *zap.SugaredLogger
 	mu                sync.Mutex
@@ -43,6 +47,7 @@ type Generator struct {
 	client            *resty.Client
 }
 
+// Функция NewGenerator возвращает экземпляр Generator
 func NewGenerator(
 	logger *zap.SugaredLogger,
 	settings *config.AgentConfig) *Generator {
@@ -63,6 +68,7 @@ func NewGenerator(
 	}
 }
 
+// Метод Generate производит сбор метрик и возвращает канал с запросами
 func (g *Generator) Generate(mp metric.Map) chan *reqtype.ReqType {
 	g.mp = mp
 	done := make(chan struct{})
@@ -77,11 +83,13 @@ func (g *Generator) Generate(mp metric.Map) chan *reqtype.ReqType {
 	return g.generatedRequests
 }
 
+// Метод Shutdown позволяет корректно высвободить ресурсы
 func (g *Generator) Shutdown() {
 	close(g.generatedRequests)
 	close(g.errChan)
 }
 
+// Метод errorLogger представляет собой обработчик ошибок
 func (g *Generator) errorLogger(done chan struct{}) {
 	for {
 		select {
@@ -98,6 +106,7 @@ func (g *Generator) errorLogger(done chan struct{}) {
 	}
 }
 
+// Метод pollSingleMetric отвечает за публикацию метрик
 func (g *Generator) pollSingleMetric() {
 	g.mu.Lock()
 	m := make(metric.Map)
@@ -136,12 +145,14 @@ func (g *Generator) pollSingleMetric() {
 	}
 }
 
+// Метод pollUsualMetric отвечает за получение реквеста единичной метрики
 func (g *Generator) pollUsualMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	endPoint := g.getEndpointToUsualMetric(metricType, metricName, metricValue)
 	req := g.client.R().SetHeader("Content-Type", "text/plain")
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
+// Метод pollJSONMetric формирует запрос для метрики в формате JSON
 func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	b, err := g.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
@@ -158,6 +169,7 @@ func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
+// Метод pollEncodeMetric формирует шифрованный запрос
 func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	b, err := g.prepareJSONMetric(metricName, metricType, metricValue)
 	if err != nil {
@@ -180,6 +192,7 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
+// Метод pollMetricByBatch формирует запрос пачкой метрик
 func (g *Generator) pollMetricByBatch() {
 	g.mu.Lock()
 	arr := g.prepareMetricArray()
@@ -203,6 +216,7 @@ func (g *Generator) pollMetricByBatch() {
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: endpoint}
 }
 
+// Метод pollEncodedMetricByBatch формирует запрос шифрованной пачки
 func (g *Generator) pollEncodedMetricByBatch() {
 	g.mu.Lock()
 	arr := g.prepareMetricArray()
@@ -231,18 +245,22 @@ func (g *Generator) pollEncodedMetricByBatch() {
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
 }
 
+// Метод getEndpointToUsualMetric формирует конечную точку для запроса
 func (g *Generator) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
 }
 
+// Метод getEndpointToJSONMetric формирует конечную точку для запроса в формате JSON
 func (g *Generator) getEndpointToJSONMetric() string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update"}, "/")
 }
 
+// Метод getEndpointToBatchMetric формирует конечную точку для запроса в формате пачки
 func (g *Generator) getEndpointToBatchMetric() string {
 	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "updates"}, "/")
 }
 
+// Метод prepareJSONMetric отвечает за подготовку метрики в формате JSON
 func (g *Generator) prepareJSONMetric(metricName, metricType, metricValue string) ([]byte, error) {
 	m := metric.Metrics{
 		ID:    metricName,
@@ -285,6 +303,7 @@ func (g *Generator) prepareJSONMetric(metricName, metricType, metricValue string
 	return b, nil
 }
 
+// Метод prepareMetricArray отвечает за подготовку массива метрик
 func (g *Generator) prepareMetricArray() []metric.Metrics {
 	arr := make([]metric.Metrics, 0, len(g.mp))
 	for k, v := range g.mp {
@@ -318,6 +337,7 @@ func (g *Generator) prepareMetricArray() []metric.Metrics {
 	return arr
 }
 
+// Метод compress отвечает за сжатие
 func (g *Generator) compress(b []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	gz := gzip.NewWriter(buf)
@@ -331,6 +351,7 @@ func (g *Generator) compress(b []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Метод decompress отвечает за разжатие
 func (g *Generator) decompress(b []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(b)
 	gz, err := gzip.NewReader(buf)

@@ -1,3 +1,4 @@
+// Пакет poller отвечает за сбор метрик
 package poller
 
 import (
@@ -8,10 +9,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// Интерфейс MetricPoller отвечает за получение метрик
 type MetricPoller interface {
 	Poll() metric.Map
 }
 
+// Тип Poller является реализацией интерфейса MetricPoller
 type Poller struct {
 	logger *zap.SugaredLogger
 	mp     map[metric.MType]map[metric.Name]string
@@ -19,6 +22,7 @@ type Poller struct {
 	wg     sync.WaitGroup
 }
 
+// Функция NewPoller возвращает объект типа Poller
 func NewPoller(logger *zap.SugaredLogger) *Poller {
 	mp := make(metric.Map)
 	mp[metric.TypeGauge] = make(map[metric.Name]string)
@@ -31,6 +35,7 @@ func NewPoller(logger *zap.SugaredLogger) *Poller {
 	}
 }
 
+// Метод Poll собирает метрики и возвращает объект metric.Map
 func (p *Poller) Poll() metric.Map {
 
 	p.wg.Add(2)
@@ -41,6 +46,7 @@ func (p *Poller) Poll() metric.Map {
 	return p.mp
 }
 
+// Метод updateRuntime обновляет метрики из пакета runtime
 func (p *Poller) updateRuntime() {
 	defer p.wg.Done()
 	ms := &runtime.MemStats{}
@@ -49,6 +55,7 @@ func (p *Poller) updateRuntime() {
 
 }
 
+// Метод updateUtil обновляет метрики cpu, totalmemory и freememory
 func (p *Poller) updateUtil() {
 	defer p.wg.Done()
 	if err := metric.UpdateUtilMetrics(p.mp); err != nil {

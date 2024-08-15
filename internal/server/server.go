@@ -55,9 +55,9 @@ func New(
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name/", h.GETMetricHandler(logger, storage))
 	r.GET("/ping/", h.Ping(logger, conn))
+	r.POST("/value/", h.GetMetricJSONHandler(logger, storage))
 	r.POST("/update/:type/:name/:value/", h.POSTMetricHandler(logger, storage))
 	r.POST("/update/", h.POSTMetricJSONHandler(logger, storage))
-	r.POST("/value/", h.GetMetricJSONHandler(logger, storage))
 	r.POST("/updates/", h.PostMetricUpdates(logger, storage))
 
 	//pproff tools api

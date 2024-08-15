@@ -1,3 +1,4 @@
+// Пакет storagemanager предназначен для описания фабрики хранилищ.
 package storagemanager
 
 import (
@@ -11,10 +12,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// Объявление ошибок
 const (
 	ErrPointGetStorage = "error in storagemanager.GetStorage(): "
 )
 
+// Функция GetStorage, которая получает ctx - контекст,
+// logger - для логирования,
+// cfg - для получения данных из конфигурации приложения.
 func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.ServerConfig) (storage.Storage, error) {
 	switch {
 	case cfg.DatabaseDSN != "":
@@ -43,6 +48,7 @@ func GetStorage(ctx context.Context, logger *zap.SugaredLogger, cfg *config.Serv
 	}
 }
 
+// Функция creatingStorageFile используется для backup в memory
 func creatingStorageFile(
 	ctx context.Context,
 	settings *config.ServerConfig,

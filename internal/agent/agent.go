@@ -1,3 +1,5 @@
+// Пакет agent содержит агента(клиента), который отправляет запросы на
+// сервер хранения метрик
 package agent
 
 import (
@@ -15,6 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Структура Agent, который отправляет запросы на сервер
 type Agent struct {
 	logger      *zap.SugaredLogger
 	settings    *config.AgentConfig
@@ -28,6 +31,7 @@ type Agent struct {
 	poster    poster.MetricPoster
 }
 
+// Функция New возвращает объект агента
 func New(
 	settings *config.AgentConfig,
 	logger *zap.SugaredLogger) *Agent {
@@ -46,6 +50,7 @@ func New(
 	}
 }
 
+// Функция Run запускает процесс сбора метрик и их отправку на сервер
 func (a *Agent) Run(ctx context.Context) {
 	pollTicker := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
 	defer pollTicker.Stop()
@@ -83,6 +88,7 @@ func (a *Agent) Run(ctx context.Context) {
 	}
 }
 
+// Функция updCounter инкрементирует счетчик
 func (a *Agent) updCounter() {
 	a.mu.Lock()
 	defer a.mu.Unlock()

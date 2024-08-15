@@ -1,3 +1,5 @@
+// Пакет poster предоставляет функционал по публикации
+// метрик на сервер
 package poster
 
 import (
@@ -9,10 +11,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// Интерфейс MetricPoster отвечает за публикацию метрик
+// на сервер
 type MetricPoster interface {
 	Post(requests <-chan *reqtype.ReqType)
 }
 
+// Тип Poster является реализацией MetricPoster
 type Poster struct {
 	settings *config.AgentConfig
 	logger   *zap.SugaredLogger
@@ -20,6 +25,7 @@ type Poster struct {
 	res      *result.Result
 }
 
+// Функция NewPoster инциализирует и возвращает объект Poster
 func NewPoster(
 	logger *zap.SugaredLogger,
 	settings *config.AgentConfig,
@@ -32,10 +38,7 @@ func NewPoster(
 	}
 }
 
-func (p *Poster) Shutdown() {
-	close(p.errChan)
-}
-
+// Метод Post отправляет запросы, полученные из канала.
 func (p *Poster) Post(requests <-chan *reqtype.ReqType) {
 
 	var wg sync.WaitGroup
@@ -56,6 +59,12 @@ func (p *Poster) Post(requests <-chan *reqtype.ReqType) {
 	defer close(done)
 }
 
+// Метод Shutdown позволяет корректно завершить работу Poster
+func (p *Poster) Shutdown() {
+	close(p.errChan)
+}
+
+// Метод errorLogger отвечает за логгирование ошибок во время работы Poster
 func (p *Poster) errorLogger(done chan struct{}) {
 	for {
 		select {
@@ -71,6 +80,7 @@ func (p *Poster) errorLogger(done chan struct{}) {
 	}
 }
 
+// Метод postRequest отвечает за публикацию метрики на сервер
 func (p *Poster) postRequest(r *reqtype.ReqType) {
 
 	resp, err := r.Req.Post(r.Endpoint)

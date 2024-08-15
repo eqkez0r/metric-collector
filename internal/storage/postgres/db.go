@@ -1,3 +1,5 @@
+// Пакет postgres представляет реализацию хранилища на основе
+// PostgreSQL
 package postgres
 
 import (
@@ -12,25 +14,31 @@ import (
 )
 
 const (
+	// Тип хранилища
 	TYPE = "PostgresSQL database"
 
+	// Запросы на создание таблиц
 	queryCreateGauges   = `CREATE TABLE IF NOT EXISTS gauges(name text primary key, value double precision)`
 	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value bigint)`
 
+	// Запросы для gauge
 	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1 LIMIT 1`
 	queryGetAllGauge = `SELECT name, value FROM gauges`
 	querySetGauge    = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 
+	// Запросы для counter
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1 LIMIT 1`
 	queryGetAllCounter = `SELECT name, value FROM counters`
 	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = counters.value + EXCLUDED.value`
 )
 
+// Тип PSQLStorage представляет реализацию хранилища
 type PSQLStorage struct {
 	db     *pgxpool.Pool
 	logger *zap.SugaredLogger
 }
 
+// Функция New возвращает экземпляр хранилища PSQLStorage
 func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStorage, error) {
 
 	db, err := pgxpool.New(ctx, conn)

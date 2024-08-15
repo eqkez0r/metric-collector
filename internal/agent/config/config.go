@@ -1,3 +1,4 @@
+// пакет config предоставляет структуру конфигурации для Agent
 package config
 
 import (
@@ -8,18 +9,24 @@ import (
 )
 
 const (
+	// Объявление точки ошибки
 	errPointNewAgentConfig = "error in NewAgentConfig(): "
 
-	defaultAddr           = "localhost:8080"
-	defaultPollInterval   = 2
+	// Значение адреса сервера по умолчанию
+	defaultAddr = "localhost:8080"
+	// Значение таймера для обновления метрик
+	defaultPollInterval = 2
+	// Значение таймера для публикации метрик
 	defaultReportInterval = 10
-	defaultRateLimit      = 100
+	// Ограничение на кол-во запросов по умолчанию
+	defaultRateLimit = 100
 )
 
 var (
 	ErrUnexpectedArguments = errors.New("unexpected arguments")
 )
 
+// Тип AgentConfig является типом конфигурации для Agent
 type AgentConfig struct {
 	AgentEndpoint  string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
@@ -28,6 +35,7 @@ type AgentConfig struct {
 	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
+// Функция NewAgentConfig создает экземлпяр типа AgentConfig
 func NewAgentConfig() (*AgentConfig, error) {
 	cfg := &AgentConfig{}
 	flag.StringVar(&cfg.AgentEndpoint, "a", defaultAddr, "agent endpoint")

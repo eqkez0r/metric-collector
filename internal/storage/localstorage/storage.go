@@ -1,3 +1,4 @@
+// Пакет localstorage представляет реализацию memstorage
 package localstorage
 
 import (
@@ -18,26 +19,22 @@ const (
 	TYPE = "Local mem database"
 )
 
+// Тип LocalStorage является реализацией хранилища в памяти
 type LocalStorage struct {
 	logger  *zap.SugaredLogger
 	mu      *sync.Mutex
 	storage storage
 }
 
+// storage - Внутренний тип хранилища, содержит две карты для каждого типа
+// метрик
 type storage struct {
 	// <NameMetric, Metric>
 	GaugeMetrics   map[string]metric.Gauge
 	CounterMetrics map[string]metric.Counter
 }
 
-func newStorage() storage {
-	//share for new metric
-	return storage{
-		GaugeMetrics:   make(map[string]metric.Gauge),
-		CounterMetrics: make(map[string]metric.Counter),
-	}
-}
-
+// Функция New вовзращает экземляр LocalStorage
 func New(logger *zap.SugaredLogger) *LocalStorage {
 	return &LocalStorage{
 		storage: newStorage(),
@@ -262,4 +259,13 @@ func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 		}
 	}
 	return nil
+}
+
+// Функция инициализация внутреннего типа хранилища
+func newStorage() storage {
+	//share for new metric
+	return storage{
+		GaugeMetrics:   make(map[string]metric.Gauge),
+		CounterMetrics: make(map[string]metric.Counter),
+	}
 }

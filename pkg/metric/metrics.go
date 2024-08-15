@@ -1,3 +1,4 @@
+// Пакет metric описывает метрики и приводит их перечень
 package metric
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 const (
+	// Перечень метрик
 	PollCount = Name("PollCount")
 
 	Alloc         = Name("Alloc")
@@ -44,10 +46,12 @@ const (
 	TotalMemory   = Name("TotalMemory")
 	FreeMemory    = Name("FreeMemory")
 
+	// Перечень типов метрик
 	TypeGauge   = MType("gauge")
 	TypeCounter = MType("counter")
 )
 
+// Тип Metrics используются для API
 type Metrics struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
@@ -55,20 +59,29 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
+// Тип Name является аллиасом строки, который представляет из себя
+// имя метрики
 type Name string
 
 func (m Name) String() string {
 	return string(m)
 }
 
+// Тип MType является аллиасом строки, который представляет из себя
+// имя тип метрики
 type MType string
 
 func (t MType) String() string {
 	return string(t)
 }
 
+// Тип Map это карта карт, где первый ключ - это тип метрики,
+// а второй ключ - имя метрики.
 type Map map[MType]map[Name]string
 
+// Функция UpdateRuntimeMetrics выполянет обновление метрик.
+// ms - переменная, которая хранит MemStats
+// mp - карта, куда записываются метрики
 func UpdateRuntimeMetrics(ms *runtime.MemStats, mp Map) {
 	runtime.ReadMemStats(ms)
 	mp[TypeGauge][Alloc] = strconv.FormatFloat(float64(ms.Alloc), 'f', -1, 64)
@@ -102,6 +115,8 @@ func UpdateRuntimeMetrics(ms *runtime.MemStats, mp Map) {
 
 }
 
+// Функция UpdateUtilMetrics позволяет получить дополнительные метрики.
+// mp - карта, куда будут записаны метрики.
 func UpdateUtilMetrics(mp Map) error {
 	m, err := mem.VirtualMemory()
 	if err != nil {

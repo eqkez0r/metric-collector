@@ -1,3 +1,4 @@
+// Пакет config содержит конфигурацию сервера
 package config
 
 import (
@@ -10,17 +11,24 @@ import (
 )
 
 const (
+	// Объявление точки ошибки
 	errPointNewServerConfig = "error in NewServerConfig(): "
 
-	defaultAddr          = "localhost:8080"
+	// Значение хоста по умолчанию
+	defaultAddr = "localhost:8080"
+	// Значение периода записи в файл по умолчанию
 	defaultStoreInterval = 300
-	defaultRestoreVal    = true
+	// Значение флага, отвечающий за запись данных в файл
+	defaultRestoreVal = true
 )
 
 var (
+	// Объявление ошибки об недопустимых переменных
 	ErrUnexpectedArguments = errors.New("unexpected arguments")
 )
 
+// Тип ServerConfig представляет структуру для конфигурации сервера
+// Host - адрес и порт, на котором крутится сервер
 type ServerConfig struct {
 	Host            string `env:"ADDRESS"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
@@ -30,6 +38,7 @@ type ServerConfig struct {
 	HashKey         string `env:"KEY"`
 }
 
+// Функция NewServerConfig возвращает экземпляр конфигурации сервера
 func NewServerConfig() (*ServerConfig, error) {
 	cfg := &ServerConfig{}
 	defaultStorePath := os.TempDir() + "/metrics-db.json"
