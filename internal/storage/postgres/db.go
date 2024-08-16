@@ -1,7 +1,10 @@
+// Пакет postgres представляет реализацию хранилища на основе
+// PostgreSQL
 package postgres
 
 import (
 	"context"
+
 	store "github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/Eqke/metric-collector/utils/retry"
@@ -11,30 +14,35 @@ import (
 )
 
 const (
-	TYPE = "PostgreSQL database"
+	// Тип хранилища
+	TYPE = "PostgresSQL database"
 
+	// Запросы на создание таблиц
 	queryCreateGauges   = `CREATE TABLE IF NOT EXISTS gauges(name text primary key, value double precision)`
 	queryCreateCounters = `CREATE TABLE IF NOT EXISTS counters(name text primary key, value bigint)`
 
+	// Запросы для gauge
 	queryGetGauge    = `SELECT value FROM gauges WHERE name = $1 LIMIT 1`
 	queryGetAllGauge = `SELECT name, value FROM gauges`
 	querySetGauge    = `INSERT INTO gauges(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = $2`
 
+	// Запросы для counter
 	queryGetCounter    = `SELECT value FROM counters WHERE name = $1 LIMIT 1`
 	queryGetAllCounter = `SELECT name, value FROM counters`
 	querySetCounter    = `INSERT INTO counters(name, value) VALUES($1, $2) ON CONFLICT(name) DO UPDATE SET value = counters.value + EXCLUDED.value`
 )
 
+// Тип PSQLStorage представляет реализацию хранилища
 type PSQLStorage struct {
 	db     *pgxpool.Pool
 	logger *zap.SugaredLogger
 }
 
+// Функция New возвращает экземпляр хранилища PSQLStorage
 func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStorage, error) {
 
 	db, err := pgxpool.New(ctx, conn)
 	if err != nil {
-		logger.Errorf("Database connection error: %v", err)
 		return nil, err
 	}
 
@@ -46,33 +54,28 @@ func New(ctx context.Context, logger *zap.SugaredLogger, conn string) (*PSQLStor
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database ping error: %v", err)
 		return nil, err
 	}
 
 	err = retry.Retry(logger, 3, func() error {
 		_, err = db.Exec(ctx, queryCreateGauges)
 		if err != nil {
-			logger.Errorf("Database exec error: %v", err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database exec error: %v", err)
 		return nil, err
 	}
 
 	err = retry.Retry(logger, 3, func() error {
 		_, err = db.Exec(ctx, queryCreateCounters)
 		if err != nil {
-			logger.Errorf("Database exec error: %v", err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("Database exec error: %v", err)
 		return nil, err
 	}
 
@@ -184,9 +187,9 @@ func (p *PSQLStorage) GetValue(ctx context.Context, metricType, name string) (st
 }
 
 func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric, error) {
-	metrics := make(map[string][]store.Metric, 0)
-	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0)
-	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0)
+	metrics := make(map[string][]store.Metric, 2)
+	metrics[metric.TypeCounter.String()] = make([]store.Metric, 0, 2)
+	metrics[metric.TypeGauge.String()] = make([]store.Metric, 0, 31)
 	var rows pgx.Rows
 	var err error
 
@@ -204,7 +207,7 @@ func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric
 		}
 		metrics[metric.TypeGauge.String()] = append(metrics[metric.TypeGauge.String()], m)
 	}
-	//p.logger.Infof("debug: %v", metrics[metric.TypeGauge.String()])
+
 	rows, err = p.db.Query(ctx, queryGetAllCounter)
 	if err != nil {
 		p.logger.Errorf("Database query error: %v", err)
@@ -219,7 +222,6 @@ func (p *PSQLStorage) GetMetrics(ctx context.Context) (map[string][]store.Metric
 		}
 		metrics[metric.TypeCounter.String()] = append(metrics[metric.TypeCounter.String()], m)
 	}
-	//p.logger.Infof("debug: %v", metrics[metric.TypeCounter.String()])
 
 	return metrics, nil
 }
@@ -233,7 +235,6 @@ func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.M
 				p.logger.Errorf("Database scan metric: %v error: %v. ", m, err)
 				return m, err
 			}
-			//p.logger.Infof("debug delta: %v", m.Delta)
 
 		}
 	case metric.TypeGauge.String():
@@ -242,7 +243,7 @@ func (p *PSQLStorage) GetMetric(ctx context.Context, m metric.Metrics) (metric.M
 				p.logger.Errorf("Database scan metric: %v error: %v. ", m, err)
 				return m, err
 			}
-			//p.logger.Infof("debug value: %v", m.Value)
+
 		}
 	default:
 		{

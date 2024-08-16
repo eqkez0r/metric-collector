@@ -2,12 +2,13 @@ package middleware
 
 import (
 	"bytes"
-	"github.com/Eqke/metric-collector/internal/server/writers"
-	hash2 "github.com/Eqke/metric-collector/utils/hash"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
+
+	"github.com/Eqke/metric-collector/internal/server/writers"
+	h "github.com/Eqke/metric-collector/utils/hash"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 const (
@@ -17,35 +18,32 @@ const (
 func Hash(
 	logger *zap.SugaredLogger,
 	hashKey string) gin.HandlerFunc {
-	return func(context *gin.Context) {
-		hashHeader := context.GetHeader("HashSHA256")
+	return func(c *gin.Context) {
+		hashHeader := c.GetHeader("HashSHA256")
 		logger.Infof("%s: %s", "hash header", hashHeader)
-		//if hashHeader == "" {
-		//	context.Next()
-		//	return
-		//}
+
 		if hashHeader != "" && hashKey != "" {
-			logger.Infof("Checking hash")
-			body, err := io.ReadAll(context.Request.Body)
+			logger.Info("Checking hash")
+			body, err := io.ReadAll(c.Request.Body)
 			if err != nil {
 				logger.Errorf("%s: %v", errPointHash, err)
-				context.Status(http.StatusInternalServerError)
+				c.Status(http.StatusInternalServerError)
 				return
 			}
 
-			context.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
-			sign := hash2.Sign(body, hashKey)
+			sign := h.Sign(body, hashKey)
 			if sign != hashHeader {
 				logger.Errorf("%s: %v", errPointHash, "hash not equal")
-				context.Status(http.StatusBadRequest)
+				c.Status(http.StatusBadRequest)
 				return
 			}
 			logger.Infof("%s: %s", "hash checked successfully", hashHeader)
-			w := writers.NewHashWriter(context.Writer, logger, hashKey)
-			context.Writer = w
+			w := writers.NewHashWriter(c.Writer, logger, hashKey)
+			c.Writer = w
 		}
 
-		context.Next()
+		c.Next()
 	}
 }

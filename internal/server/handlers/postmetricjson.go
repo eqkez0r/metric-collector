@@ -1,59 +1,66 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+
 	"github.com/Eqke/metric-collector/internal/storage"
 	"github.com/Eqke/metric-collector/pkg/metric"
 	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 const (
 	errPointPostMetricJSON = "error in POST /update: "
 )
 
+//go:generate moq -out newJSONMetricProvider_moq_test.go . NewJSONMetricProvider
+type NewJSONMetricProvider interface {
+	SetMetric(context.Context, metric.Metrics) error
+}
+
 func POSTMetricJSONHandler(
 	logger *zap.SugaredLogger,
-	s storage.Storage) gin.HandlerFunc {
-	return func(context *gin.Context) {
+	p NewJSONMetricProvider) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		logger.Infof("/update: recieving metrics batch")
-		if context.ContentType() != "application/json" {
-			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, context.ContentType())
-			context.Status(http.StatusBadRequest)
+		if c.ContentType() != "application/json" {
+			logger.Errorf("%s: unknown content type %s", errPointPostMetricJSON, c.ContentType())
+			c.Status(http.StatusBadRequest)
 			return
 		}
 		var m metric.Metrics
-		if err := context.BindJSON(&m); err != nil {
+		if err := c.BindJSON(&m); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
-			context.Status(http.StatusBadRequest)
+			c.Status(http.StatusBadRequest)
 			return
 		}
 
 		logger.Info("metric was received", m)
 
 		if err := retry.Retry(logger, 3, func() error {
-			return s.SetMetric(context, m)
+			return p.SetMetric(c, m)
 		}); err != nil {
 			logger.Errorf("%s: %v", errPointPostMetricJSON, err)
 			if errors.Is(err, storage.ErrIsUnknownType) {
-				context.Status(http.StatusBadRequest)
+				c.Status(http.StatusBadRequest)
 				return
 			}
 			if errors.Is(err, storage.ErrIDIsEmpty) {
-				context.Status(http.StatusNotFound)
+				c.Status(http.StatusNotFound)
 				return
 			}
 			if errors.Is(err, storage.ErrValueIsEmpty) {
-				context.Status(http.StatusNotFound)
+				c.Status(http.StatusNotFound)
 				return
 			}
-			context.Status(http.StatusInternalServerError)
+			c.Status(http.StatusInternalServerError)
 			return
 		}
 		logger.Infof("metric was saved with type: %s, name: %s",
 			m.MType, m.ID)
-		context.Status(http.StatusOK)
+		c.Status(http.StatusOK)
 	}
 }

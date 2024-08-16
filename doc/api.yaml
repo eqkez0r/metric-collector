@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Metric collector API
+  description: Metric collector API
+  version: 1.0.0
+servers:
+  - url: 'http://127.0.0.1:8080'
+    description: "main server"
+paths:
+  /:
+    get:
+      description: Returns all metrics
+      responses:
+        '200':
+          description: A map of metrics
+          content:
+            html/text
+        '500':
+          description: Internal server error
+
+  /value/:type/:name:
+    get:
+      description: Return single metric
+      responses:
+        '200':
+          description: Success read single metric
+        '404':
+          description: Not found metric with this params
+
+  /value/:
+    post:
+      description: Get metric in JSON
+      responses:
+        '200':
+          description: Success read metric
+        '400':
+          description: Invalid json
+        '404':
+          description: Invalid content-type/empty name/is not exist
+        '500':
+          description: Internal server error
+
+  /update/:type/:name/:value/:
+    post:
+      description: Update metric
+      responses:
+        '200':
+          description: Success writing metric
+        '400':
+          description: Invalid metric type
+        '404':
+          description: Empty name
+        '500':
+          description: Internal server error
+
+  /update/:
+    post:
+      description: Update metric in JSON
+      responses:
+        '200':
+          description: Success update
+        '400':
+          description: Invalid content-type/invalid JSON/Unknown metric type
+        '404':
+          description: Empty name/empty value
+        '500':
+          description: Internal server error
+
+  /updates/:
+    post:
+      description: Update metric by batch
+      responses:
+        '200':
+          description: Success read metric batch
+        '400':
+          description: Invalid content-type/invalid JSON/unknown metric type
+        '404':
+          description: Empty name/empty value
+        '500':
+          description: Internal server error
+
+
+  /ping:
+    get:
+      description: Ping database
+      responses:
+        '200':
+          description: Success ping
+        '500':
+          description: Internal server error
+

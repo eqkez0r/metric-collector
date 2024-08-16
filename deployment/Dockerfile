@@ -5,10 +5,10 @@ WORKDIR /usr/local/src
 RUN apk --no-cache add bash git go-task gcc gettext musl-dev
 
 # dependecies
-COPY go.mod go.sum ./
+COPY ../go.mod go.sum ./
 RUN go mod download
 
-COPY . ./
+COPY .. ./
 RUN go build -o ./build/server ./cmd/server/main.go
 RUN go build -o ./build/agent ./cmd/agent/main.go
 

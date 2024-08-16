@@ -1,71 +1,102 @@
 package handlers
 
 import (
-	ls "github.com/Eqke/metric-collector/internal/storage/localstorage"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
+
+	store "github.com/Eqke/metric-collector/internal/storage"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 )
 
-func TestCounterHandler_ServeHTTP(t *testing.T) {
-	type want struct {
-		statusCode int
-	}
+func TestPostMetric(t *testing.T) {
+	l := zaptest.NewLogger(t).Sugar()
 
-	tests := []struct {
-		name string
-		url  string
-		want want
-	}{
-		{
-			name: "Success request",
-			url:  "http://localhost:8080/update/counter/test/10",
-			want: want{
-				statusCode: http.StatusOK,
-			},
-		},
-		{
-			name: "Without metric name",
-			url:  "http://localhost:8080/update/counter/10",
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-		{
-			name: "Without value",
-			url:  "http://localhost:8080/update/counter/test",
-			want: want{
-				statusCode: http.StatusNotFound,
-			},
-		},
-		{
-			name: "with invalid value",
-			url:  "http://localhost:8080/update/counter/test/abc",
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
+	gin.DisableConsoleColor()
+	gin.SetMode(gin.ReleaseMode)
+	engine := gin.New()
+	engine.RedirectFixedPath = true
+
+	provider := &NewMetricProviderMock{
+		SetValueFunc: func(contextMoqParam context.Context, mtype, name, value string) error {
+			if name == "" {
+				return store.ErrIDIsEmpty
+			}
+			switch mtype {
+			case "gauge":
+				{
+					_, err := strconv.ParseFloat(value, 64)
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			case "counter":
+				{
+					_, err := strconv.ParseInt(value, 10, 64)
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			default:
+				{
+					return store.ErrIsUnknownType
+				}
+			}
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := zaptest.NewLogger(t).Sugar()
-			localstorage := ls.New(l)
-			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
-			w := httptest.NewRecorder()
-			gin.DisableConsoleColor()
-			gin.SetMode(gin.ReleaseMode)
 
-			engine := gin.New()
-			engine.POST("/update/:type/:name/:value", POSTMetricHandler(l, localstorage))
-			engine.ServeHTTP(w, req)
+	engine.POST("/update/:type/:name/:value/", POSTMetricHandler(l, provider))
 
-			res := w.Result()
-			defer res.Body.Close()
+	t.Run("post_counter_success", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/counter/random/1/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.want.statusCode, res.StatusCode)
-		})
-	}
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("post_counter_error", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/counter/random/fsd/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("post_gauge_success", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/gauge/random/234.35/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("post_gauge_error", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/counter/random/fsd/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("post_unknown_type", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/unknown/random/234.35/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("post_with_empty_name", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/update/gauge//1/", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
 }

@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"github.com/Eqke/metric-collector/internal/agent"
-	"github.com/Eqke/metric-collector/internal/config"
-	"go.uber.org/zap"
+	"github.com/Eqke/metric-collector/internal/agent/config"
 	"log"
 	"os/signal"
 	"syscall"
+
+	"github.com/Eqke/metric-collector/internal/agent"
+	"go.uber.org/zap"
 )
 
 func main() {
-
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatal(err)

@@ -1,49 +1,65 @@
+// Пакет storage предоставляет интерфейс для хранилища.
 package storage
 
 import (
 	"context"
-	"errors"
 	"github.com/Eqke/metric-collector/pkg/metric"
 )
 
-var (
-	ErrIsMetricDoesntExist = errors.New("metric doesn't exist")
-	ErrIsUnknownType       = errors.New("unknown metric type")
-	ErrIDIsEmpty           = errors.New("metric name is empty")
-	ErrValueIsEmpty        = errors.New("metric value is empty")
+// Интерфейс хранилища
+type Storage interface {
+	// Метод SetValue добавляет или обновляет значение метрики.
+	// Получает на вход(порядок соответствует):
+	// metricType - тип метрики,
+	// name - имя метрики,
+	// value - значение метрики.
+	SetValue(context.Context, string, string, string) error
 
-	ErrPointSetValue          = "error in storage.SetValue(): "
-	ErrPointSetMetric         = "error in storage.SetMetric(): "
-	ErrPointGetValue          = "error in storage.GetValue(): "
-	ErrPointGetMetrics        = "error in storage.GetMetrics(): "
-	ErrPointGetMetric         = "error in storage.GetMetric(): "
-	ErrPointGetGaugeMetrics   = "error in storage.GetGaugeMetrics(): "
-	ErrPointGetGaugeMetric    = "error in storage.GetGaugeMetric(): "
-	ErrPointGetCounterMetrics = "error in storage.GetCounterMetrics(): "
-	ErrPointGetCounterMetric  = "error in storage.GetCounterMetric(): "
-	ErrPointToJSON            = "error in storage.ToJSON(): "
-	ErrPointFromJSON          = "error in storage.FromJSON(): "
-	ErrPointToFile            = "error in storage.ToFile(): "
-	ErrPointFromFile          = "error in storage.FromFile(): "
-	ErrPointClose             = "error in storage.Close(): "
-)
+	// Метод SetMetric добавляет или обновляет значение метрики с
+	// помощью типа metric.Metrics.
+	// Получает экземпляр metric.Metrics.
+	SetMetric(context.Context, metric.Metrics) error
 
+	// Метод SetMetrics добавляет или обновляет массив метрик
+	// Получает на вход массив metric.Metrics.
+	SetMetrics(context.Context, []metric.Metrics) error
+
+	// Метод GetValue позволяет получить значение метрики.
+	// Получает на вход:
+	// metricType - тип метрики,
+	// name - имя метрики.
+	GetValue(context.Context, string, string) (string, error)
+
+	// Метод GetMetric полвзоялет получить экземлпяр metric.Metric.
+	// Получает на вход:
+	// m - экземпляр metric.Metrics
+	GetMetric(context.Context, metric.Metrics) (metric.Metrics, error)
+
+	// Метод GetMetrics позволяет получить карту метрик
+	GetMetrics(context.Context) (map[string][]Metric, error)
+
+	// Метод ToJSON используется для сериализации
+	ToJSON(context.Context) ([]byte, error)
+
+	// Метод FromJSON используется для десериализации
+	FromJSON(context.Context, []byte) error
+
+	// Метод ToFile используется для записи в файл
+	ToFile(context.Context, string) error
+
+	// Метод FromFile используется для чтения из файла
+	FromFile(context.Context, string) error
+
+	// Метод Type используется для получения типа хранилища
+	Type() string
+
+	// Метод Close используется для утилизации ресурсов
+	Close() error
+}
+
+// Тип Metric нужен используется для дальнейшего отображения
+// в строковом формате
 type Metric struct {
 	Name  string
 	Value string
-}
-
-type Storage interface {
-	SetValue(context.Context, string, string, string) error
-	SetMetric(context.Context, metric.Metrics) error
-	GetValue(context.Context, string, string) (string, error)
-	GetMetrics(context.Context) (map[string][]Metric, error)
-	GetMetric(context.Context, metric.Metrics) (metric.Metrics, error)
-	SetMetrics(context.Context, []metric.Metrics) error
-	ToJSON(context.Context) ([]byte, error)
-	FromJSON(context.Context, []byte) error
-	ToFile(context.Context, string) error
-	FromFile(context.Context, string) error
-	Type() string
-	Close() error
 }

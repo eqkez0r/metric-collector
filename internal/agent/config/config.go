@@ -1,3 +1,4 @@
+// пакет config предоставляет структуру конфигурации для Agent
 package config
 
 import (
@@ -7,6 +8,25 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+const (
+	// Объявление точки ошибки
+	errPointNewAgentConfig = "error in NewAgentConfig(): "
+
+	// Значение адреса сервера по умолчанию
+	defaultAddr = "localhost:8080"
+	// Значение таймера для обновления метрик
+	defaultPollInterval = 2
+	// Значение таймера для публикации метрик
+	defaultReportInterval = 10
+	// Ограничение на кол-во запросов по умолчанию
+	defaultRateLimit = 100
+)
+
+var (
+	ErrUnexpectedArguments = errors.New("unexpected arguments")
+)
+
+// Тип AgentConfig является типом конфигурации для Agent
 type AgentConfig struct {
 	AgentEndpoint  string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
@@ -15,10 +35,7 @@ type AgentConfig struct {
 	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
-const (
-	errPointNewAgentConfig = "error in NewAgentConfig(): "
-)
-
+// Функция NewAgentConfig создает экземлпяр типа AgentConfig
 func NewAgentConfig() (*AgentConfig, error) {
 	cfg := &AgentConfig{}
 	flag.StringVar(&cfg.AgentEndpoint, "a", defaultAddr, "agent endpoint")
@@ -28,7 +45,7 @@ func NewAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&cfg.RateLimit, "l", defaultRateLimit, "rate limit")
 	flag.Parse()
 	if len(flag.Args()) != 0 {
-		return nil, errors.New(errPointNewAgentConfig + errUnexpectedArguments.Error())
+		return nil, e.WrapError(errPointNewAgentConfig, ErrUnexpectedArguments)
 	}
 	err := cleanenv.ReadEnv(cfg)
 	if err != nil {
