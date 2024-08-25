@@ -14,6 +14,12 @@ import (
 	_ "net/http/pprof"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
 
 	logger, err := zap.NewDevelopment()
@@ -21,7 +27,10 @@ func main() {
 		log.Fatal(err)
 	}
 	sugarLogger := logger.Sugar()
-
+	sugarLogger.Infoln(
+		zap.String("Build version: ", buildVersion),
+		zap.String("Build date: ", buildDate),
+		zap.String("Git commit: ", buildCommit))
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
