@@ -6,6 +6,7 @@ import (
 	"flag"
 	e "github.com/Eqke/metric-collector/pkg/error"
 	"github.com/ilyakaznacheev/cleanenv"
+	"os"
 )
 
 const (
@@ -28,24 +29,38 @@ var (
 
 // Тип AgentConfig является типом конфигурации для Agent
 type AgentConfig struct {
-	AgentEndpoint  string `env:"ADDRESS"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
-	PollInterval   int    `env:"POLL_INTERVAL"`
+	AgentEndpoint  string `env:"ADDRESS" json:"address"`
+	ReportInterval int    `env:"REPORT_INTERVAL" json:"report_interval"`
+	PollInterval   int    `env:"POLL_INTERVAL" json:"poll_interval"`
 	HashKey        string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
-	CryptoKey      string `env:"CRYPTO_KEY"`
+	CryptoKey      string `env:"CRYPTO_KEY" json:"crypto_key"`
 }
 
 // Функция NewAgentConfig создает экземлпяр типа AgentConfig
 func NewAgentConfig() (*AgentConfig, error) {
 	cfg := &AgentConfig{}
+	var cfgPathFl string
+
 	flag.StringVar(&cfg.AgentEndpoint, "a", defaultAddr, "agent endpoint")
 	flag.IntVar(&cfg.ReportInterval, "r", defaultReportInterval, "report interval in seconds")
 	flag.IntVar(&cfg.PollInterval, "p", defaultPollInterval, "poll interval in seconds")
 	flag.StringVar(&cfg.HashKey, "k", "", "hash key")
 	flag.IntVar(&cfg.RateLimit, "l", defaultRateLimit, "rate limit")
-	flag.StringVar(&cfg.CryptoKey, "c", "", "path to crypto key")
+	flag.StringVar(&cfg.CryptoKey, "s", "", "path to crypto key")
+	flag.StringVar(&cfgPathFl, "c", "", "path to cfg")
 	flag.Parse()
+
+	if configPath := os.Getenv("CONFIG"); configPath != "" {
+		cfgPathFl = configPath
+	}
+
+	if cfgPathFl != "" {
+		err := cleanenv.ReadConfig(cfgPathFl, &cfg)
+		if err != nil {
+			return nil, e.WrapError(errPointNewAgentConfig, err)
+		}
+	}
 	if len(flag.Args()) != 0 {
 		return nil, e.WrapError(errPointNewAgentConfig, ErrUnexpectedArguments)
 	}
@@ -53,5 +68,6 @@ func NewAgentConfig() (*AgentConfig, error) {
 	if err != nil {
 		return nil, e.WrapError(errPointNewAgentConfig, err)
 	}
+
 	return cfg, nil
 }
