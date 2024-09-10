@@ -32,7 +32,7 @@ func main() {
 		zap.String("Build version: ", buildVersion),
 		zap.String("Build date: ", buildDate),
 		zap.String("Git commit: ", buildCommit))
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
 
 	settings, err := config.NewServerConfig()
