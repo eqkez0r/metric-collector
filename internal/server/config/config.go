@@ -36,6 +36,7 @@ type ServerConfig struct {
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	HashKey         string `env:"KEY"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 }
 
 // Функция NewServerConfig возвращает экземпляр конфигурации сервера
@@ -48,6 +49,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	flag.BoolVar(&cfg.Restore, "r", defaultRestoreVal, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "Database DSN")
 	flag.StringVar(&cfg.HashKey, "k", "", "hash key")
+	flag.StringVar(&cfg.CryptoKey, "c", "", "path to crypto key")
 	flag.Parse()
 
 	if len(flag.Args()) != 0 {

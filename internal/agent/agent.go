@@ -4,6 +4,7 @@ package agent
 
 import (
 	"context"
+	"crypto/rsa"
 	"github.com/Eqke/metric-collector/internal/agent/config"
 	"strconv"
 	"sync"
@@ -34,7 +35,9 @@ type Agent struct {
 // Функция New возвращает объект агента
 func New(
 	settings *config.AgentConfig,
-	logger *zap.SugaredLogger) *Agent {
+	logger *zap.SugaredLogger,
+	publicKey *rsa.PublicKey,
+) *Agent {
 	client := resty.New()
 
 	return &Agent{
@@ -44,7 +47,7 @@ func New(
 		pollCounter: 0,
 		mp:          make(metric.Map),
 		poller:      poller.NewPoller(logger),
-		generator:   generator.NewGenerator(logger, settings),
+		generator:   generator.NewGenerator(logger, settings, publicKey),
 		poster:      poster.NewPoster(logger, settings),
 		mu:          sync.RWMutex{},
 	}

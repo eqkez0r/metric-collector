@@ -4,9 +4,11 @@ package generator
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"github.com/Eqke/metric-collector/internal/agent/config"
+	"github.com/Eqke/metric-collector/internal/encrypting"
 	"io"
 	"strconv"
 	"strings"
@@ -45,12 +47,15 @@ type Generator struct {
 	mp                metric.Map
 	errChan           chan error
 	client            *resty.Client
+	publicKey         *rsa.PublicKey
 }
 
 // Функция NewGenerator возвращает экземпляр Generator
 func NewGenerator(
 	logger *zap.SugaredLogger,
-	settings *config.AgentConfig) *Generator {
+	settings *config.AgentConfig,
+	publicKey *rsa.PublicKey,
+) *Generator {
 	client := resty.New()
 	client.SetRetryCount(3)
 	client.SetRetryWaitTime(1 * time.Second)
@@ -65,6 +70,7 @@ func NewGenerator(
 		mu:                sync.Mutex{},
 		errChan:           make(chan error),
 		client:            client,
+		publicKey:         publicKey,
 	}
 }
 
@@ -159,11 +165,15 @@ func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (
 		return nil, err
 	}
 	endPoint := g.getEndpointToJSONMetric()
+	encryptedData, err := encrypting.Encrypt(g.publicKey, b)
+	if err != nil {
+		return nil, err
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(b)
+		SetBody(encryptedData)
 	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(b, g.settings.HashKey))
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
 
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
@@ -182,12 +192,17 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 		return nil, err
 	}
 
+	encryptedData, err := encrypting.Encrypt(g.publicKey, encoded)
+	if err != nil {
+		return nil, err
+	}
+
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(encoded)
 	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encoded, g.settings.HashKey))
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
@@ -201,16 +216,21 @@ func (g *Generator) pollMetricByBatch() {
 		g.errChan <- ErrEmptyMetricBatch
 		return
 	}
+	b, err := json.Marshal(arr)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
+	encryptedData, err := encrypting.Encrypt(g.publicKey, b)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(arr)
+		SetBody(encryptedData)
 	if g.settings.HashKey != "" {
-		b, err := json.Marshal(arr)
-		if err != nil {
-			g.errChan <- err
-			return
-		}
-		req = req.SetHeader("HashSHA256", hash.Sign(b, g.settings.HashKey))
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
 	endpoint := g.getEndpointToBatchMetric()
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: endpoint}
@@ -235,12 +255,17 @@ func (g *Generator) pollEncodedMetricByBatch() {
 		g.errChan <- err
 		return
 	}
+	encryptedData, err := encrypting.Encrypt(g.publicKey, encoded)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetBody(encoded)
+		SetBody(encryptedData)
 	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encoded, g.settings.HashKey))
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
 }

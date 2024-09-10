@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"crypto/rsa"
 	"github.com/Eqke/metric-collector/internal/server/config"
 	"net/http"
 	"net/http/pprof"
@@ -31,7 +32,9 @@ func New(
 	ctx context.Context,
 	s *config.ServerConfig,
 	storage stor.Storage,
-	logger *zap.SugaredLogger) (*HTTPServer, error) {
+	logger *zap.SugaredLogger,
+	key *rsa.PrivateKey,
+) (*HTTPServer, error) {
 
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
@@ -50,7 +53,12 @@ func New(
 	logger.Infof("Server initing with %s storage", storage.Type())
 
 	//usage middleware
-	r.Use(middleware.Logger(logger), middleware.Hash(logger, s.HashKey), middleware.Gzip(logger))
+	r.Use(
+		middleware.Logger(logger),
+		middleware.Hash(logger, s.HashKey),
+		middleware.Decrypt(logger, key),
+		middleware.Gzip(logger),
+	)
 
 	r.GET("/", h.GetRootMetricsHandler(logger, storage))
 	r.GET("/value/:type/:name/", h.GETMetricHandler(logger, storage))

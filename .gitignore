@@ -29,6 +29,7 @@ vendor/
 
 build
 data
+keys
 
 statictest
 metricstest

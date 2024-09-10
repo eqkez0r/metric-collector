@@ -33,6 +33,7 @@ type AgentConfig struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	HashKey        string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
 }
 
 // Функция NewAgentConfig создает экземлпяр типа AgentConfig
@@ -43,6 +44,7 @@ func NewAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&cfg.PollInterval, "p", defaultPollInterval, "poll interval in seconds")
 	flag.StringVar(&cfg.HashKey, "k", "", "hash key")
 	flag.IntVar(&cfg.RateLimit, "l", defaultRateLimit, "rate limit")
+	flag.StringVar(&cfg.CryptoKey, "c", "", "path to crypto key")
 	flag.Parse()
 	if len(flag.Args()) != 0 {
 		return nil, e.WrapError(errPointNewAgentConfig, ErrUnexpectedArguments)

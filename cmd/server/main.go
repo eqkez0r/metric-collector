@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/Eqke/metric-collector/internal/encrypting"
 	"github.com/Eqke/metric-collector/internal/server/config"
 	"log"
 	"os/signal"
@@ -44,7 +45,21 @@ func main() {
 		sugarLogger.Fatal(err)
 	}
 
-	server, err := httpserver.New(ctx, settings, storage, sugarLogger)
+	privateKey, err := encrypting.GetPrivateKey(settings.CryptoKey)
+	if err != nil {
+		sugarLogger.Error(err)
+		err = encrypting.GenerateIfNotExist(settings.CryptoKey)
+		if err != nil {
+			sugarLogger.Fatal(err)
+		}
+
+		privateKey, err = encrypting.GetPrivateKey(settings.CryptoKey)
+		if err != nil {
+			sugarLogger.Fatal(err)
+		}
+	}
+
+	server, err := httpserver.New(ctx, settings, storage, sugarLogger, privateKey)
 	if err != nil {
 		sugarLogger.Fatal(err)
 	}

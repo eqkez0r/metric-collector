@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/agent/config"
+	"github.com/Eqke/metric-collector/internal/encrypting"
 	"log"
 	"os/signal"
 	"syscall"
@@ -30,8 +31,14 @@ func main() {
 	defer stop()
 	settings, err := config.NewAgentConfig()
 	if err != nil {
-		log.Fatal(err)
+		sugLog.Fatal(err)
 	}
-	a := agent.New(settings, sugLog)
+
+	publicKey, err := encrypting.GetPublicKey(settings.CryptoKey)
+	if err != nil {
+		sugLog.Fatal(err)
+	}
+
+	a := agent.New(settings, sugLog, publicKey)
 	a.Run(ctx)
 }
