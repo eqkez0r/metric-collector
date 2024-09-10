@@ -200,7 +200,7 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetBody(encoded)
+		SetBody(encryptedData)
 	if g.settings.HashKey != "" {
 		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}

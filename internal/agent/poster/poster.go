@@ -72,6 +72,7 @@ func (p *Poster) errorLogger(done chan struct{}) {
 			return
 		case err := <-p.errChan:
 			p.logger.Error(err)
+			p.res.IncErrors()
 		default:
 			{
 			}
