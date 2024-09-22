@@ -55,6 +55,7 @@ func New(
 	//usage middleware
 	r.Use(
 		middleware.Logger(logger),
+		middleware.SubnetTrust(logger, s.TrustedSubnet),
 		middleware.Hash(logger, s.HashKey),
 		middleware.Decrypt(logger, key),
 		middleware.Gzip(logger),

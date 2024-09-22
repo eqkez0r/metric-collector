@@ -36,6 +36,7 @@ type ServerConfig struct {
 	DatabaseDSN     string `env:"DATABASE_DSN" json:"database_dsn"`
 	HashKey         string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // Функция NewServerConfig возвращает экземпляр конфигурации сервера
@@ -50,7 +51,9 @@ func NewServerConfig() (*ServerConfig, error) {
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "Database DSN")
 	flag.StringVar(&cfg.HashKey, "k", "", "hash key")
 	flag.StringVar(&cfg.CryptoKey, "s", "", "path to crypto key")
+	flag.StringVar(&cfg.TrustedSubnet, "t", "", "trusted subnet (CIDR)")
 	flag.StringVar(&cfgPathFl, "c", "", "path to cfg")
+
 	flag.Parse()
 
 	if configPath := os.Getenv("CONFIG"); configPath != "" {

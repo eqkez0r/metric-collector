@@ -10,6 +10,8 @@ import (
 	"github.com/Eqke/metric-collector/internal/agent/config"
 	"github.com/Eqke/metric-collector/internal/encrypting"
 	"io"
+	"log"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -154,7 +156,7 @@ func (g *Generator) pollSingleMetric() {
 // Метод pollUsualMetric отвечает за получение реквеста единичной метрики
 func (g *Generator) pollUsualMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	endPoint := g.getEndpointToUsualMetric(metricType, metricName, metricValue)
-	req := g.client.R().SetHeader("Content-Type", "text/plain")
+	req := g.client.R().SetHeader("Content-Type", "text/plain").SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -176,6 +178,7 @@ func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (
 		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
 
+	req.SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -204,6 +207,7 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 	if g.settings.HashKey != "" {
 		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -232,6 +236,7 @@ func (g *Generator) pollMetricByBatch() {
 	if g.settings.HashKey != "" {
 		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	endpoint := g.getEndpointToBatchMetric()
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: endpoint}
 }
@@ -267,6 +272,7 @@ func (g *Generator) pollEncodedMetricByBatch() {
 	if g.settings.HashKey != "" {
 		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
 }
 
@@ -384,4 +390,18 @@ func (g *Generator) decompress(b []byte) ([]byte, error) {
 		return nil, err
 	}
 	return io.ReadAll(gz)
+}
+
+func getIP() string {
+	inter, err := net.InterfaceByName("Ethernet")
+	if err != nil {
+		return ""
+	}
+	log.Println("interface ethernet", inter)
+	addr, err := inter.Addrs()
+	if err != nil {
+		return ""
+	}
+
+	return addr[0].String()
 }
