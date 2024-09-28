@@ -72,7 +72,7 @@ func main() {
 	wg.Add(2)
 	go server.Run(ctx, &wg)
 
-	grpcServer := grpc_server.New(sugarLogger, storage, settings.GrpcServerHost)
+	grpcServer := grpcserver.New(sugarLogger, storage, settings.GrpcServerHost)
 
 	go grpcServer.Run(ctx, &wg)
 
