@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	github.com/eqkez0r/OsExitLinter v0.0.0-20240823100647-e83fe06627af
+	github.com/eqkez0r/metric-collector-grpc-api v0.0.0-20240924180646-bc792b55bf95
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.12.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
@@ -12,6 +13,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/tools v0.24.0
+	google.golang.org/grpc v1.67.0
 	honnef.co/go/tools v0.0.1-2020.1.4
 )
 
@@ -52,9 +54,10 @@ require (
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.23.0 // indirect
+	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

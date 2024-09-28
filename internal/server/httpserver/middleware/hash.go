@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"bytes"
+	"github.com/Eqke/metric-collector/internal/server/httpserver/writers"
 	"io"
 	"net/http"
 
-	"github.com/Eqke/metric-collector/internal/server/writers"
 	h "github.com/Eqke/metric-collector/utils/hash"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

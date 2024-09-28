@@ -44,12 +44,13 @@ type MetricGenerator interface {
 type Generator struct {
 	logger            *zap.SugaredLogger
 	mu                sync.Mutex
-	settings          *config.AgentConfig
 	generatedRequests chan *reqtype.ReqType
 	mp                metric.Map
 	errChan           chan error
 	client            *resty.Client
 	publicKey         *rsa.PublicKey
+	endpoint          string
+	hashkey           string
 }
 
 // Функция NewGenerator возвращает экземпляр Generator
@@ -67,12 +68,13 @@ func NewGenerator(
 	client.SetRetryMaxWaitTime(5 * time.Second)
 	return &Generator{
 		logger:            logger,
-		settings:          settings,
 		generatedRequests: make(chan *reqtype.ReqType, settings.RateLimit),
 		mu:                sync.Mutex{},
 		errChan:           make(chan error),
 		client:            client,
 		publicKey:         publicKey,
+		endpoint:          settings.AgentEndpoint,
+		hashkey:           settings.HashKey,
 	}
 }
 
@@ -174,8 +176,8 @@ func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(encryptedData)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
 
 	req.SetHeader("X-Real-IP", getIP())
@@ -204,8 +206,8 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(encryptedData)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
 	req.SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
@@ -233,8 +235,8 @@ func (g *Generator) pollMetricByBatch() {
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(encryptedData)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
 	req.SetHeader("X-Real-IP", getIP())
 	endpoint := g.getEndpointToBatchMetric()
@@ -269,8 +271,8 @@ func (g *Generator) pollEncodedMetricByBatch() {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(encryptedData)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.settings.HashKey))
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
 	req.SetHeader("X-Real-IP", getIP())
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
@@ -278,17 +280,17 @@ func (g *Generator) pollEncodedMetricByBatch() {
 
 // Метод getEndpointToUsualMetric формирует конечную точку для запроса
 func (g *Generator) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "update", metricType, metricName, metricValue}, "/")
 }
 
 // Метод getEndpointToJSONMetric формирует конечную точку для запроса в формате JSON
 func (g *Generator) getEndpointToJSONMetric() string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update"}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "update"}, "/")
 }
 
 // Метод getEndpointToBatchMetric формирует конечную точку для запроса в формате пачки
 func (g *Generator) getEndpointToBatchMetric() string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "updates"}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "updates"}, "/")
 }
 
 // Метод prepareJSONMetric отвечает за подготовку метрики в формате JSON

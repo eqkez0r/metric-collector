@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/agent/config"
+	"github.com/Eqke/metric-collector/internal/agent/grpcagent"
+	"github.com/Eqke/metric-collector/internal/agent/httpagent"
+	"github.com/Eqke/metric-collector/internal/agent/poller"
 	"github.com/Eqke/metric-collector/internal/encrypting"
 	"log"
 	"os/signal"
+	"sync"
 	"syscall"
 
-	"github.com/Eqke/metric-collector/internal/agent"
 	"go.uber.org/zap"
 )
 
@@ -23,22 +26,35 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sugLog := logger.Sugar()
-	sugLog.Infoln(zap.String("Build version: ", buildVersion),
+	sugarLogger := logger.Sugar()
+	sugarLogger.Infoln(zap.String("Build version: ", buildVersion),
 		zap.String("Build date: ", buildDate),
 		zap.String("Git commit: ", buildCommit))
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
 	settings, err := config.NewAgentConfig()
 	if err != nil {
-		sugLog.Fatal(err)
+		sugarLogger.Fatal(err)
 	}
 
 	publicKey, err := encrypting.GetPublicKey(settings.CryptoKey)
 	if err != nil {
-		sugLog.Fatal(err)
+		sugarLogger.Fatal(err)
 	}
+	var wg sync.WaitGroup
 
-	a := agent.New(settings, sugLog, publicKey)
-	a.Run(ctx)
+	poll := poller.NewPoller(sugarLogger, settings)
+
+	go poll.Poll(ctx, &wg)
+
+	httpAgent := httpagent.New(settings, sugarLogger, publicKey, poll)
+
+	wg.Add(2)
+	go httpAgent.Run(ctx, &wg)
+
+	grpcAgent := grpcagent.New(sugarLogger, settings, poll)
+
+	go grpcAgent.Run(ctx, &wg)
+
+	wg.Wait()
 }

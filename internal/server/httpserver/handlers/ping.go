@@ -1,25 +1,27 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Eqke/metric-collector/utils/retry"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
 
+type PingProvider interface {
+	Ping(context.Context) error
+}
+
 func Ping(
 	logger *zap.SugaredLogger,
-	conn *pgxpool.Pool,
+	store PingProvider,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("ping...")
-		if conn == nil {
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-		if err := retry.Retry(logger, 3, func() error { return conn.Ping(c) }); err != nil {
+		if err := retry.Retry(logger, 3, func() error {
+			return store.Ping(c)
+		}); err != nil {
 			logger.Info("ping failed...")
 			c.Status(http.StatusInternalServerError)
 			return

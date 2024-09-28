@@ -14,11 +14,13 @@ const (
 	errPointNewServerConfig = "error in NewServerConfig(): "
 
 	// Значение хоста по умолчанию
-	defaultAddr = "localhost:8080"
+	defaultAddr = "127.0.0.1:8080"
 	// Значение периода записи в файл по умолчанию
 	defaultStoreInterval = 300
 	// Значение флага, отвечающий за запись данных в файл
 	defaultRestoreVal = true
+	// Значение адреса gRPC-сервера по умолчанию
+	defaultGrpcAddr = "127.0.0.1:8081"
 )
 
 var (
@@ -37,6 +39,7 @@ type ServerConfig struct {
 	HashKey         string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	GrpcServerHost  string `env:"GRPC_SERVER_HOST" json:"grpc_server_host"`
 }
 
 // Функция NewServerConfig возвращает экземпляр конфигурации сервера
@@ -45,6 +48,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	var cfgPathFl string
 	defaultStorePath := os.TempDir() + "/metrics-db.json"
 	flag.StringVar(&cfg.Host, "a", defaultAddr, "server host")
+	flag.StringVar(&cfg.GrpcServerHost, "g", defaultGrpcAddr, "grpc server host")
 	flag.IntVar(&cfg.StoreInterval, "i", defaultStoreInterval, "store interval in seconds")
 	flag.StringVar(&cfg.FileStoragePath, "f", defaultStorePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", defaultRestoreVal, "restore")

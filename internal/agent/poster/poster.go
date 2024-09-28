@@ -19,10 +19,10 @@ type MetricPoster interface {
 
 // Тип Poster является реализацией MetricPoster
 type Poster struct {
-	settings *config.AgentConfig
-	logger   *zap.SugaredLogger
-	errChan  chan error
-	res      *result.Result
+	logger    *zap.SugaredLogger
+	errChan   chan error
+	res       *result.Result
+	ratelimit int
 }
 
 // Функция NewPoster инциализирует и возвращает объект Poster
@@ -31,10 +31,10 @@ func NewPoster(
 	settings *config.AgentConfig,
 ) *Poster {
 	return &Poster{
-		logger:   logger,
-		settings: settings,
-		errChan:  make(chan error),
-		res:      result.New(),
+		logger:    logger,
+		ratelimit: settings.RateLimit,
+		errChan:   make(chan error),
+		res:       result.New(),
 	}
 }
 
@@ -45,7 +45,7 @@ func (p *Poster) Post(requests <-chan *reqtype.ReqType) {
 	done := make(chan struct{})
 
 	go p.errorLogger(done)
-	for i := 0; i < p.settings.RateLimit; i++ {
+	for i := 0; i < p.ratelimit; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

@@ -227,6 +227,10 @@ func (s *LocalStorage) FromFile(ctx context.Context, path string) error {
 	return s.FromJSON(ctx, data.Bytes())
 }
 
+func (s *LocalStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (s *LocalStorage) Close() error {
 	return nil
 }

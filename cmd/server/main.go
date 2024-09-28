@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"github.com/Eqke/metric-collector/internal/encrypting"
+	"github.com/Eqke/metric-collector/internal/restorer"
 	"github.com/Eqke/metric-collector/internal/server/config"
+	"github.com/Eqke/metric-collector/internal/server/grpcserver"
+	"github.com/Eqke/metric-collector/internal/server/httpserver"
 	"log"
 	"os/signal"
+	"sync"
 	"syscall"
 
-	httpserver "github.com/Eqke/metric-collector/internal/server"
 	"github.com/Eqke/metric-collector/internal/storagemanager"
 	"go.uber.org/zap"
 
@@ -22,7 +25,7 @@ var (
 )
 
 func main() {
-
+	var wg sync.WaitGroup
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatal(err)
@@ -59,10 +62,19 @@ func main() {
 		}
 	}
 
-	server, err := httpserver.New(ctx, settings, storage, sugarLogger, privateKey)
-	if err != nil {
-		sugarLogger.Fatal(err)
+	if settings.Restore && settings.DatabaseDSN == "" {
+		restore := restorer.New(sugarLogger, storage, settings.FileStoragePath, settings.StoreInterval)
+		wg.Add(1)
+		go restore.Run(ctx, &wg)
 	}
-	server.Run(ctx)
 
+	server := httpserver.New(settings, storage, sugarLogger, privateKey)
+	wg.Add(2)
+	go server.Run(ctx, &wg)
+
+	grpcServer := grpc_server.New(sugarLogger, storage, settings.GrpcServerHost)
+
+	go grpcServer.Run(ctx, &wg)
+
+	wg.Wait()
 }

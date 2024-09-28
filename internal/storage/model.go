@@ -53,6 +53,9 @@ type Storage interface {
 	// Метод Type используется для получения типа хранилища
 	Type() string
 
+	// Метод Ping используется для пинга хранилища
+	Ping(ctx context.Context) error
+
 	// Метод Close используется для утилизации ресурсов
 	Close() error
 }

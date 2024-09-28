@@ -276,6 +276,10 @@ func (p *PSQLStorage) Close() error {
 	return nil
 }
 
+func (p *PSQLStorage) Ping(ctx context.Context) error {
+	return p.db.Ping(ctx)
+}
+
 func (p *PSQLStorage) Type() string {
 	return TYPE
 }
