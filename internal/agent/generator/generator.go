@@ -4,10 +4,14 @@ package generator
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"github.com/Eqke/metric-collector/internal/agent/config"
+	"github.com/Eqke/metric-collector/internal/encrypting"
 	"io"
+	"log"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,17 +44,21 @@ type MetricGenerator interface {
 type Generator struct {
 	logger            *zap.SugaredLogger
 	mu                sync.Mutex
-	settings          *config.AgentConfig
 	generatedRequests chan *reqtype.ReqType
 	mp                metric.Map
 	errChan           chan error
 	client            *resty.Client
+	publicKey         *rsa.PublicKey
+	endpoint          string
+	hashkey           string
 }
 
 // Функция NewGenerator возвращает экземпляр Generator
 func NewGenerator(
 	logger *zap.SugaredLogger,
-	settings *config.AgentConfig) *Generator {
+	settings *config.AgentConfig,
+	publicKey *rsa.PublicKey,
+) *Generator {
 	client := resty.New()
 	client.SetRetryCount(3)
 	client.SetRetryWaitTime(1 * time.Second)
@@ -60,11 +68,13 @@ func NewGenerator(
 	client.SetRetryMaxWaitTime(5 * time.Second)
 	return &Generator{
 		logger:            logger,
-		settings:          settings,
 		generatedRequests: make(chan *reqtype.ReqType, settings.RateLimit),
 		mu:                sync.Mutex{},
 		errChan:           make(chan error),
 		client:            client,
+		publicKey:         publicKey,
+		endpoint:          settings.AgentEndpoint,
+		hashkey:           settings.HashKey,
 	}
 }
 
@@ -148,7 +158,7 @@ func (g *Generator) pollSingleMetric() {
 // Метод pollUsualMetric отвечает за получение реквеста единичной метрики
 func (g *Generator) pollUsualMetric(metricName, metricType, metricValue string) (*reqtype.ReqType, error) {
 	endPoint := g.getEndpointToUsualMetric(metricType, metricName, metricValue)
-	req := g.client.R().SetHeader("Content-Type", "text/plain")
+	req := g.client.R().SetHeader("Content-Type", "text/plain").SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -159,13 +169,18 @@ func (g *Generator) pollJSONMetric(metricName, metricType, metricValue string) (
 		return nil, err
 	}
 	endPoint := g.getEndpointToJSONMetric()
+	encryptedData, err := encrypting.Encrypt(g.publicKey, b)
+	if err != nil {
+		return nil, err
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(b)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(b, g.settings.HashKey))
+		SetBody(encryptedData)
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
 
+	req.SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -182,13 +197,19 @@ func (g *Generator) pollEncodeMetric(metricName, metricType, metricValue string)
 		return nil, err
 	}
 
+	encryptedData, err := encrypting.Encrypt(g.publicKey, encoded)
+	if err != nil {
+		return nil, err
+	}
+
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetBody(encoded)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encoded, g.settings.HashKey))
+		SetBody(encryptedData)
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	return &reqtype.ReqType{Req: req, Endpoint: endPoint}, nil
 }
 
@@ -201,17 +222,23 @@ func (g *Generator) pollMetricByBatch() {
 		g.errChan <- ErrEmptyMetricBatch
 		return
 	}
+	b, err := json.Marshal(arr)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
+	encryptedData, err := encrypting.Encrypt(g.publicKey, b)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(arr)
-	if g.settings.HashKey != "" {
-		b, err := json.Marshal(arr)
-		if err != nil {
-			g.errChan <- err
-			return
-		}
-		req = req.SetHeader("HashSHA256", hash.Sign(b, g.settings.HashKey))
+		SetBody(encryptedData)
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	endpoint := g.getEndpointToBatchMetric()
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: endpoint}
 }
@@ -235,29 +262,35 @@ func (g *Generator) pollEncodedMetricByBatch() {
 		g.errChan <- err
 		return
 	}
+	encryptedData, err := encrypting.Encrypt(g.publicKey, encoded)
+	if err != nil {
+		g.errChan <- err
+		return
+	}
 	req := g.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetBody(encoded)
-	if g.settings.HashKey != "" {
-		req = req.SetHeader("HashSHA256", hash.Sign(encoded, g.settings.HashKey))
+		SetBody(encryptedData)
+	if g.hashkey != "" {
+		req = req.SetHeader("HashSHA256", hash.Sign(encryptedData, g.hashkey))
 	}
+	req.SetHeader("X-Real-IP", getIP())
 	g.generatedRequests <- &reqtype.ReqType{Req: req, Endpoint: g.getEndpointToBatchMetric()}
 }
 
 // Метод getEndpointToUsualMetric формирует конечную точку для запроса
 func (g *Generator) getEndpointToUsualMetric(metricType, metricName, metricValue string) string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update", metricType, metricName, metricValue}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "update", metricType, metricName, metricValue}, "/")
 }
 
 // Метод getEndpointToJSONMetric формирует конечную точку для запроса в формате JSON
 func (g *Generator) getEndpointToJSONMetric() string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "update"}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "update"}, "/")
 }
 
 // Метод getEndpointToBatchMetric формирует конечную точку для запроса в формате пачки
 func (g *Generator) getEndpointToBatchMetric() string {
-	return strings.Join([]string{"http:/", g.settings.AgentEndpoint, "updates"}, "/")
+	return strings.Join([]string{"http:/", g.endpoint, "updates"}, "/")
 }
 
 // Метод prepareJSONMetric отвечает за подготовку метрики в формате JSON
@@ -359,4 +392,18 @@ func (g *Generator) decompress(b []byte) ([]byte, error) {
 		return nil, err
 	}
 	return io.ReadAll(gz)
+}
+
+func getIP() string {
+	inter, err := net.InterfaceByName("Ethernet")
+	if err != nil {
+		return ""
+	}
+	log.Println("interface ethernet", inter)
+	addr, err := inter.Addrs()
+	if err != nil {
+		return ""
+	}
+
+	return addr[0].String()
 }

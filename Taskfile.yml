@@ -1,7 +1,5 @@
 version: '3'
 
-
-
 tasks:
   default:
     - task: buildForTest
@@ -34,8 +32,8 @@ tasks:
   build:
     cmds:
       - powershell New-Item -ItemType Directory -Force -Path ./build
-      - go build -o build/agent.exe ./cmd/agent
-      - go build -o build/server.exe ./cmd/server
+      - go build -o build/agent.exe ./cmd/agent -ldflags  -ldflags="-X main.buildVersion=v0.0.1 -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.buildCommit=$(shell git rev-parse HEAD)"
+      - go build -o build/server.exe ./cmd/server -ldflags  -ldflags="-X main.buildVersion=v0.0.1 -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.buildCommit=$(shell git rev-parse HEAD)"
 
   buildForTest:
     cmds:

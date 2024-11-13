@@ -1,9 +1,10 @@
 // Пакет agent содержит агента(клиента), который отправляет запросы на
 // сервер хранения метрик
-package agent
+package httpagent
 
 import (
 	"context"
+	"crypto/rsa"
 	"github.com/Eqke/metric-collector/internal/agent/config"
 	"strconv"
 	"sync"
@@ -20,62 +21,60 @@ import (
 // Структура Agent, который отправляет запросы на сервер
 type Agent struct {
 	logger      *zap.SugaredLogger
-	settings    *config.AgentConfig
 	client      *resty.Client
 	pollCounter int64
 	mp          metric.Map
 	mu          sync.RWMutex
+	poller      poller.MetricPoller
+	generator   generator.MetricGenerator
+	poster      poster.MetricPoster
 
-	poller    poller.MetricPoller
-	generator generator.MetricGenerator
-	poster    poster.MetricPoster
+	pollInterval   time.Duration
+	reportInterval time.Duration
 }
 
 // Функция New возвращает объект агента
 func New(
 	settings *config.AgentConfig,
-	logger *zap.SugaredLogger) *Agent {
+	logger *zap.SugaredLogger,
+	publicKey *rsa.PublicKey,
+	poller poller.MetricPoller,
+) *Agent {
 	client := resty.New()
 
 	return &Agent{
-		logger:      logger,
-		settings:    settings,
-		client:      client,
-		pollCounter: 0,
-		mp:          make(metric.Map),
-		poller:      poller.NewPoller(logger),
-		generator:   generator.NewGenerator(logger, settings),
-		poster:      poster.NewPoster(logger, settings),
-		mu:          sync.RWMutex{},
+		logger:         logger,
+		client:         client,
+		pollCounter:    0,
+		mp:             make(metric.Map),
+		poller:         poller,
+		generator:      generator.NewGenerator(logger, settings, publicKey),
+		poster:         poster.NewPoster(logger, settings),
+		mu:             sync.RWMutex{},
+		pollInterval:   time.Duration(settings.PollInterval) * time.Second,
+		reportInterval: time.Duration(settings.ReportInterval) * time.Second,
 	}
 }
 
 // Функция Run запускает процесс сбора метрик и их отправку на сервер
-func (a *Agent) Run(ctx context.Context) {
-	pollTicker := time.NewTicker(time.Duration(a.settings.PollInterval) * time.Second)
-	defer pollTicker.Stop()
-	reportTicker := time.NewTicker(time.Duration(a.settings.ReportInterval) * time.Second)
+func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
+	reportTicker := time.NewTicker(a.reportInterval)
 	defer reportTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			{
 				a.logger.Info("agent was stopped")
+				wg.Done()
 				return
-			}
-		case <-pollTicker.C:
-			{
-				a.logger.Info("polling...")
-				a.mu.RLock()
-				a.mp = a.poller.Poll()
-				a.mu.RUnlock()
-				a.logger.Info("polling... done")
 			}
 		case <-reportTicker.C:
 			{
 				a.logger.Info("posting...")
-				a.updCounter()
+
 				a.mu.Lock()
+				a.mp = a.poller.GetMetrics()
+				a.updCounter()
 				a.poster.Post(a.generator.Generate(a.mp))
 				a.mu.Unlock()
 				a.logger.Info("posting... done")

@@ -84,10 +84,8 @@ func (s *LocalStorage) SetMetric(ctx context.Context, m metric.Metrics) error {
 }
 
 func (s *LocalStorage) GetValue(ctx context.Context, metricType, name string) (string, error) {
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	switch metricType {
 	case metric.TypeCounter.String():
 		{
@@ -229,6 +227,10 @@ func (s *LocalStorage) FromFile(ctx context.Context, path string) error {
 	return s.FromJSON(ctx, data.Bytes())
 }
 
+func (s *LocalStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (s *LocalStorage) Close() error {
 	return nil
 }
@@ -256,6 +258,10 @@ func (s *LocalStorage) setMetric(ctx context.Context, m metric.Metrics) error {
 				return store.ErrValueIsEmpty
 			}
 			s.storage.GaugeMetrics[m.ID] = metric.Gauge(*m.Value)
+		}
+	default:
+		{
+			return store.ErrIsUnknownType
 		}
 	}
 	return nil

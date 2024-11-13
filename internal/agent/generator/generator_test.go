@@ -12,7 +12,7 @@ func TestNewGenerator(t *testing.T) {
 		l := zaptest.NewLogger(t).Sugar()
 		gen := NewGenerator(l, &config.AgentConfig{
 			RateLimit: 100,
-		})
+		}, nil)
 
 		require.NotNil(t, gen)
 	})
